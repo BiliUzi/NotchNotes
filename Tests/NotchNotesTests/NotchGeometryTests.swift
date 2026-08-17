@@ -16,7 +16,7 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(
             NotchGeometry.clickActivationSize(
                 compactSize: layout.compactSize,
-                measuredNotchSize: layout.notchSize
+                notchLimitSize: layout.notchSize
             ),
             NSSize(width: 204, height: 32)
         )
@@ -34,17 +34,27 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(
             NotchGeometry.clickActivationSize(
                 compactSize: layout.compactSize,
-                measuredNotchSize: layout.notchSize
+                notchLimitSize: layout.notchSize
             ),
             NSSize(width: 180, height: 30)
         )
     }
 
-    func testClickActivationSizeIsZeroWithoutMeasuredNotch() {
+    func testClickNotchLimitUsesConservativeWidthWithSafeArea() {
         XCTAssertEqual(
-            NotchGeometry.clickActivationSize(
-                compactSize: NSSize(width: 204, height: 34),
-                measuredNotchSize: .zero
+            NotchGeometry.clickNotchLimit(
+                measuredNotchSize: .zero,
+                safeAreaTop: 32
+            ),
+            NSSize(width: 120, height: 32)
+        )
+    }
+
+    func testClickNotchLimitIsZeroWithoutNotchOrSafeArea() {
+        XCTAssertEqual(
+            NotchGeometry.clickNotchLimit(
+                measuredNotchSize: .zero,
+                safeAreaTop: 0
             ),
             .zero
         )

@@ -70,10 +70,19 @@ enum NotchGeometry {
         )
     }
 
-    static func clickActivationSize(compactSize: NSSize, measuredNotchSize: NSSize) -> NSSize {
+    static func clickNotchLimit(measuredNotchSize: NSSize, safeAreaTop: CGFloat) -> NSSize {
+        if measuredNotchSize != .zero {
+            return measuredNotchSize
+        }
+
+        guard safeAreaTop > 0 else { return .zero }
+        return NSSize(width: 120, height: safeAreaTop)
+    }
+
+    static func clickActivationSize(compactSize: NSSize, notchLimitSize: NSSize) -> NSSize {
         NSSize(
-            width: max(min(compactSize.width, measuredNotchSize.width), 0),
-            height: max(min(compactSize.height, measuredNotchSize.height), 0)
+            width: max(min(compactSize.width, notchLimitSize.width), 0),
+            height: max(min(compactSize.height, notchLimitSize.height), 0)
         )
     }
 }

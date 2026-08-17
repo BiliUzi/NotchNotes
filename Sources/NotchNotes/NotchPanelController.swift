@@ -418,9 +418,13 @@ final class NotchPanelController: NSObject {
         let layout = currentLayout()
         let screen = targetScreen()
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let notchLimitSize = NotchGeometry.clickNotchLimit(
+            measuredNotchSize: screen?.measuredNotchSize ?? .zero,
+            safeAreaTop: screen?.safeAreaInsets.top ?? 0
+        )
         let size = NotchGeometry.clickActivationSize(
             compactSize: layout.compactSize,
-            measuredNotchSize: screen?.measuredNotchSize ?? .zero
+            notchLimitSize: notchLimitSize
         )
         return frame(
             for: size,
