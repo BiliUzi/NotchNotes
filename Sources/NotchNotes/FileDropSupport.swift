@@ -46,6 +46,22 @@ enum FileDragOperationPolicy {
     static let allowedOperations: NSDragOperation = [.copy, .generic]
 }
 
+enum CompactFileDropActivationPolicy {
+    static func shouldActivate(
+        isLeftMouseDragging: Bool,
+        pasteboardChangeCountAtMouseDown: Int?,
+        currentPasteboardChangeCount: Int,
+        containsFileURLs: Bool
+    ) -> Bool {
+        guard isLeftMouseDragging,
+              let pasteboardChangeCountAtMouseDown,
+              currentPasteboardChangeCount != pasteboardChangeCountAtMouseDown else {
+            return false
+        }
+        return containsFileURLs
+    }
+}
+
 enum FileDragGesturePolicy {
     static let activationDistance: CGFloat = 8
 

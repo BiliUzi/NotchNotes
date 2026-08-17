@@ -116,6 +116,8 @@ final class NotchPanelController: NSObject {
     private var globalMouseUpMonitor: Any?
     private var isExpanded = false
     private var isRevealedForFileDrag = false
+    private var isLeftMouseDragging = false
+    private var dragPasteboardChangeCountAtMouseDown: Int?
 
     override init() {
         hotPanel = NotchPanel(
@@ -338,38 +340,41 @@ final class NotchPanelController: NSObject {
     private func observeMouseMonitors() {
         localMouseDownMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
             let location = NSEvent.mouseLocation
+            let dragPasteboardChangeCount = NSPasteboard(name: .drag).changeCount
             Task { @MainActor in
-                guard let self,
-                      !self.isExpanded,
-                      self.clickActivationFrame(at: location).contains(location) else {
-                    return
-                }
-                self.expand(animated: true, activate: true)
+                self?.handleObservedMouseDown(
+                    at: location,
+                    dragPasteboardChangeCount: dragPasteboardChangeCount
+                )
             }
             return event
         }
 
         globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
             let location = NSEvent.mouseLocation
+            let dragPasteboardChangeCount = NSPasteboard(name: .drag).changeCount
             Task { @MainActor in
-                guard let self,
-                      !self.isExpanded,
-                      self.clickActivationFrame(at: location).contains(location) else {
-                    return
-                }
-                self.expand(animated: true, activate: true)
+                self?.handleObservedMouseDown(
+                    at: location,
+                    dragPasteboardChangeCount: dragPasteboardChangeCount
+                )
             }
         }
 
         globalMouseDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] _ in
             Task { @MainActor in
-                self?.editorInteractionState.noteGlobalMouseDragged()
+                guard let self else { return }
+                self.isLeftMouseDragging = true
+                self.editorInteractionState.noteGlobalMouseDragged()
+                self.handleMouseLocation(NSEvent.mouseLocation)
             }
         }
 
         globalMouseUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
+                self.isLeftMouseDragging = false
+                self.dragPasteboardChangeCountAtMouseDown = nil
                 self.editorInteractionState.noteGlobalMouseUp()
                 self.workspaceState.isDraggingShelfItem = false
                 self.resetFileDropState()
@@ -384,6 +389,20 @@ final class NotchPanelController: NSObject {
         }
     }
 
+    private func handleObservedMouseDown(
+        at location: NSPoint,
+        dragPasteboardChangeCount: Int
+    ) {
+        isLeftMouseDragging = false
+        dragPasteboardChangeCountAtMouseDown = dragPasteboardChangeCount
+
+        guard !isExpanded,
+              clickActivationFrame(at: location).contains(location) else {
+            return
+        }
+        expand(animated: true, activate: true)
+    }
+
     @objc private func screenParametersChanged(_ notification: Notification) {
         let layout = currentLayout()
         rebuildContent(layout: layout)
@@ -396,10 +415,16 @@ final class NotchPanelController: NSObject {
     }
 
     private func handleMouseLocation(_ point: NSPoint) {
+        let dragPasteboard = NSPasteboard(name: .drag)
         if !isExpanded,
            NSEvent.pressedMouseButtons & 1 == 1,
            dropActivationFrame().contains(point),
-           FileDropPasteboardReader.containsFileURLs(NSPasteboard(name: .drag)) {
+           CompactFileDropActivationPolicy.shouldActivate(
+               isLeftMouseDragging: isLeftMouseDragging,
+               pasteboardChangeCountAtMouseDown: dragPasteboardChangeCountAtMouseDown,
+               currentPasteboardChangeCount: dragPasteboard.changeCount,
+               containsFileURLs: FileDropPasteboardReader.containsFileURLs(dragPasteboard)
+           ) {
             hotPanel.ignoresMouseEvents = false
             handleFileDragTargeted(true)
             return
@@ -425,7 +450,8 @@ final class NotchPanelController: NSObject {
             return .zero
         }
         return NotchGeometry.centerTopActivationFrame(
-            screenFrame: screen.frame
+            screenFrame: screen.frame,
+            menuBarHeight: screen.menuBarHeight
         ) ?? .zero
     }
 

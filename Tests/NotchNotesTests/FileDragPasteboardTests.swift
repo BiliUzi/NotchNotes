@@ -44,6 +44,61 @@ final class FileDragPasteboardTests: XCTestCase {
         XCTAssertFalse(operations.contains(.delete))
     }
 
+    func testCompactDropDoesNotActivateForClickWithStaleFilePasteboard() {
+        XCTAssertFalse(
+            CompactFileDropActivationPolicy.shouldActivate(
+                isLeftMouseDragging: false,
+                pasteboardChangeCountAtMouseDown: 12,
+                currentPasteboardChangeCount: 12,
+                containsFileURLs: true
+            )
+        )
+    }
+
+    func testCompactDropDoesNotActivateForClickAfterPasteboardChanges() {
+        XCTAssertFalse(
+            CompactFileDropActivationPolicy.shouldActivate(
+                isLeftMouseDragging: false,
+                pasteboardChangeCountAtMouseDown: 12,
+                currentPasteboardChangeCount: 13,
+                containsFileURLs: true
+            )
+        )
+    }
+
+    func testCompactDropRequiresPasteboardChangeAfterMouseDown() {
+        XCTAssertFalse(
+            CompactFileDropActivationPolicy.shouldActivate(
+                isLeftMouseDragging: true,
+                pasteboardChangeCountAtMouseDown: 12,
+                currentPasteboardChangeCount: 12,
+                containsFileURLs: true
+            )
+        )
+    }
+
+    func testCompactDropActivatesForNewFileDrag() {
+        XCTAssertTrue(
+            CompactFileDropActivationPolicy.shouldActivate(
+                isLeftMouseDragging: true,
+                pasteboardChangeCountAtMouseDown: 12,
+                currentPasteboardChangeCount: 13,
+                containsFileURLs: true
+            )
+        )
+    }
+
+    func testCompactDropRequiresFileURLs() {
+        XCTAssertFalse(
+            CompactFileDropActivationPolicy.shouldActivate(
+                isLeftMouseDragging: true,
+                pasteboardChangeCountAtMouseDown: 12,
+                currentPasteboardChangeCount: 13,
+                containsFileURLs: false
+            )
+        )
+    }
+
     func testFileDragRequiresIntentionalPointerMovement() {
         XCTAssertFalse(
             FileDragGesturePolicy.shouldBegin(

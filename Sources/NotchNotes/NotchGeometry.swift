@@ -23,6 +23,11 @@ extension NSScreen {
         return CGDisplayIsBuiltin(displayID) != 0
     }
 
+    var menuBarHeight: CGFloat {
+        let visibleFrameTopInset = frame.maxY - visibleFrame.maxY
+        return max(0, max(visibleFrameTopInset, safeAreaInsets.top))
+    }
+
     var measuredNotchSize: NSSize {
         guard #available(macOS 12.0, *), safeAreaInsets.top > 0 else {
             return .zero
@@ -72,13 +77,20 @@ enum NotchGeometry {
     }
 
     static func centerTopActivationFrame(
-        screenFrame: NSRect
+        screenFrame: NSRect,
+        menuBarHeight: CGFloat
     ) -> NSRect? {
-        let activationSize = NSSize(width: 300, height: 1)
-        guard screenFrame.width >= activationSize.width,
-              screenFrame.height >= activationSize.height else {
+        guard screenFrame.width > 0,
+              screenFrame.height > 0,
+              menuBarHeight > 0,
+              menuBarHeight <= screenFrame.height else {
             return nil
         }
+
+        let activationSize = NSSize(
+            width: screenFrame.width / 6,
+            height: menuBarHeight
+        )
 
         return NSRect(
             x: screenFrame.midX - activationSize.width / 2,
