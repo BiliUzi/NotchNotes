@@ -425,9 +425,7 @@ final class NotchPanelController: NSObject {
             return .zero
         }
         return NotchGeometry.centerTopActivationFrame(
-            screenFrame: screen.frame,
-            visibleFrame: screen.visibleFrame,
-            menuBarHeight: NSApp.mainMenu?.menuBarHeight ?? 0
+            screenFrame: screen.frame
         ) ?? .zero
     }
 

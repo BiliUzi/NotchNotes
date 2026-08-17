@@ -4,36 +4,30 @@ import XCTest
 
 @MainActor
 final class NotchGeometryTests: XCTestCase {
-    func testCenterTopActivationFrameUsesScreenWidthFractionAndVisibleBounds() {
+    func testCenterTopActivationFrameUsesFixedSize() {
         XCTAssertEqual(
             NotchGeometry.centerTopActivationFrame(
-                screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
-                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1049),
-                menuBarHeight: 30
+                screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080)
             ),
-            NSRect(x: 800, y: 1050, width: 320, height: 30)
+            NSRect(x: 810, y: 1050, width: 300, height: 30)
         )
     }
 
-    func testCenterTopActivationFrameIsNilWithoutMenuBar() {
+    func testCenterTopActivationFrameAccountsForScreenOrigin() {
         XCTAssertEqual(
             NotchGeometry.centerTopActivationFrame(
-                screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
-                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
-                menuBarHeight: 30
+                screenFrame: NSRect(x: 100, y: 50, width: 1500, height: 900)
+            ),
+            NSRect(x: 700, y: 920, width: 300, height: 30)
+        )
+    }
+
+    func testCenterTopActivationFrameIsNilForScreenSmallerThanTarget() {
+        XCTAssertEqual(
+            NotchGeometry.centerTopActivationFrame(
+                screenFrame: NSRect(x: 0, y: 0, width: 299, height: 200)
             ),
             nil
-        )
-    }
-
-    func testCenterTopActivationFrameNeverExtendsBelowReservedTopArea() {
-        XCTAssertEqual(
-            NotchGeometry.centerTopActivationFrame(
-                screenFrame: NSRect(x: 100, y: 50, width: 1500, height: 900),
-                visibleFrame: NSRect(x: 100, y: 50, width: 1500, height: 880),
-                menuBarHeight: 30
-            ),
-            NSRect(x: 725, y: 930, width: 250, height: 20)
         )
     }
 }
