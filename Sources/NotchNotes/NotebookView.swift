@@ -297,6 +297,8 @@ struct MarkdownShortcutToolbar: View {
             }
 
             Spacer(minLength: 0)
+
+            ToolbarLogoView()
         }
         .frame(maxHeight: .infinity, alignment: .center)
         .padding(.horizontal, 10)
@@ -313,12 +315,38 @@ struct MarkdownCommandLabel: View {
         case .italic:
             Image(systemName: "italic")
         case .unorderedList:
-            Image(systemName: "list.bullet")
+            Text("•")
+                .font(.system(size: 20, weight: .bold))
         case .orderedList:
-            Image(systemName: "list.number")
+            Text("1.")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
         case .todoList:
             Image(systemName: "checklist")
         }
+    }
+}
+
+struct ToolbarLogoView: View {
+    private let logo: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "ToolbarLogo", withExtension: "png") else {
+            return nil
+        }
+        return NSImage(contentsOf: url)
+    }()
+
+    var body: some View {
+        Group {
+            if let logo {
+                Image(nsImage: logo)
+                    .resizable()
+            } else {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+            }
+        }
+        .scaledToFit()
+        .frame(width: 24, height: 24)
+        .accessibilityLabel("NotchNotes")
     }
 }
 
