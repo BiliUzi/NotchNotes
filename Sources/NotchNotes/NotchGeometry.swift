@@ -69,4 +69,11 @@ enum NotchGeometry {
             expandedTopOffset: 0
         )
     }
+
+    static func clickActivationSize(compactSize: NSSize, measuredNotchSize: NSSize) -> NSSize {
+        NSSize(
+            width: max(min(compactSize.width, measuredNotchSize.width), 0),
+            height: max(min(compactSize.height, measuredNotchSize.height), 0)
+        )
+    }
 }

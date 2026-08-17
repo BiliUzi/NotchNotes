@@ -133,6 +133,7 @@ final class NotchPanelController: NSObject {
         super.init()
         configurePanel(hotPanel)
         configurePanel(drawerPanel)
+        hotPanel.ignoresMouseEvents = true
         rebuildContent()
         startMousePolling()
         observeScreenChanges()
@@ -148,6 +149,7 @@ final class NotchPanelController: NSObject {
         drawerState.isExpanded = false
         drawerState.revealProgress = 0
         hotPanel.setFrame(hotFrame(for: layout), display: true)
+        hotPanel.ignoresMouseEvents = true
         hotPanel.orderFrontRegardless()
         drawerPanel.setFrame(drawerFrame(for: layout), display: true)
         drawerPanel.orderOut(nil)
@@ -199,6 +201,7 @@ final class NotchPanelController: NSObject {
             let layout = self.currentLayout()
             self.drawerPanel.orderOut(nil)
             self.hotPanel.setFrame(self.hotFrame(for: layout), display: true)
+            self.hotPanel.ignoresMouseEvents = true
             self.hotPanel.orderFrontRegardless()
         }
     }
@@ -318,6 +321,7 @@ final class NotchPanelController: NSObject {
         hotPanel.onMouseEvent = { [weak self] event in
             guard let self else { return }
             guard event.type == .leftMouseDown else { return }
+            guard self.clickActivationFrame().contains(NSEvent.mouseLocation) else { return }
             self.expand(animated: true, activate: true)
         }
 
@@ -342,7 +346,7 @@ final class NotchPanelController: NSObject {
             Task { @MainActor in
                 guard let self,
                       !self.isExpanded,
-                      self.activationFrame().contains(NSEvent.mouseLocation) else {
+                      self.clickActivationFrame().contains(NSEvent.mouseLocation) else {
                     return
                 }
                 self.expand(animated: true, activate: true)
@@ -386,8 +390,9 @@ final class NotchPanelController: NSObject {
     private func handleMouseLocation(_ point: NSPoint) {
         if !isExpanded,
            NSEvent.pressedMouseButtons & 1 == 1,
-           activationFrame().contains(point),
+           dropActivationFrame().contains(point),
            FileDropPasteboardReader.containsFileURLs(NSPasteboard(name: .drag)) {
+            hotPanel.ignoresMouseEvents = false
             handleFileDragTargeted(true)
             return
         }
@@ -395,9 +400,11 @@ final class NotchPanelController: NSObject {
         if isExpanded {
             return
         }
+
+        hotPanel.ignoresMouseEvents = true
     }
 
-    private func activationFrame() -> NSRect {
+    private func dropActivationFrame() -> NSRect {
         let layout = currentLayout()
         let frame = hotPanel.frame
         guard frame.width > 0, frame.height > 0 else {
@@ -407,10 +414,25 @@ final class NotchPanelController: NSObject {
         return frame
     }
 
+    private func clickActivationFrame() -> NSRect {
+        let layout = currentLayout()
+        let screen = targetScreen()
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = NotchGeometry.clickActivationSize(
+            compactSize: layout.compactSize,
+            measuredNotchSize: screen?.measuredNotchSize ?? .zero
+        )
+        return frame(
+            for: size,
+            topY: screenFrame.maxY + layout.compactTopOffset,
+            in: screenFrame
+        )
+    }
+
     private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {
         let margin: CGFloat = 10
         return drawerPanel.frame.insetBy(dx: -margin, dy: -margin).contains(point)
-            || activationFrame().contains(point)
+            || clickActivationFrame().contains(point)
     }
 
     private func receiveDroppedFiles(_ urls: [URL]) -> Bool {
@@ -435,6 +457,10 @@ final class NotchPanelController: NSObject {
     }
 
     private func handleFileDragTargeted(_ isTargeted: Bool) {
+        if !isTargeted {
+            hotPanel.ignoresMouseEvents = true
+        }
+
         withAnimation(.spring(response: 0.30, dampingFraction: 0.84)) {
             workspaceState.isShelfDropTargeted = isTargeted
         }
@@ -467,6 +493,7 @@ final class NotchPanelController: NSObject {
     private func finishFileDragRevealIfNeeded() {
         guard isRevealedForFileDrag else { return }
         isRevealedForFileDrag = false
+        hotPanel.ignoresMouseEvents = true
         hotPanel.orderOut(nil)
         drawerPanel.orderFrontRegardless()
     }

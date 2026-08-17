@@ -309,45 +309,70 @@ struct MarkdownCommandLabel: View {
     let command: MarkdownCommand
 
     var body: some View {
-        switch command {
-        case .bold:
-            Image(systemName: "bold")
-        case .italic:
-            Image(systemName: "italic")
-        case .unorderedList:
-            TwoRowListIcon(isOrdered: false)
-        case .orderedList:
-            TwoRowListIcon(isOrdered: true)
-        case .todoList:
-            Image(systemName: "checklist")
+        Group {
+            switch command {
+            case .bold:
+                Image(systemName: "bold")
+                    .resizable()
+                    .scaledToFit()
+            case .italic:
+                Image(systemName: "italic")
+                    .resizable()
+                    .scaledToFit()
+            case .unorderedList:
+                TwoRowListIcon(style: .unordered)
+            case .orderedList:
+                TwoRowListIcon(style: .ordered)
+            case .todoList:
+                TwoRowListIcon(style: .checklist)
+            }
         }
+        .frame(width: 18, height: 18)
     }
 }
 
+enum TwoRowListIconStyle {
+    case unordered
+    case ordered
+    case checklist
+}
+
 struct TwoRowListIcon: View {
-    let isOrdered: Bool
+    let style: TwoRowListIconStyle
 
     var body: some View {
         VStack(spacing: 2) {
             ForEach(1...2, id: \.self) { row in
-                HStack(spacing: 3) {
-                    if isOrdered {
-                        Text("\(row).")
-                            .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                            .frame(width: 7, alignment: .trailing)
-                    } else {
+                HStack(spacing: 2) {
+                    switch style {
+                    case .unordered:
                         Circle()
                             .frame(width: 3, height: 3)
-                            .frame(width: 7)
+                            .frame(width: 6)
+                    case .ordered:
+                        Text("\(row)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .frame(width: 6)
+                    case .checklist:
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 1)
+                                .stroke(lineWidth: 1)
+                                .frame(width: 5, height: 5)
+                            if row == 1 {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 4, weight: .bold))
+                            }
+                        }
+                        .frame(width: 6)
                     }
 
                     Capsule()
-                        .frame(width: 12, height: 1.5)
+                        .frame(width: 10, height: 1.5)
                 }
-                .frame(height: 7)
+                .frame(height: 8)
             }
         }
-        .frame(width: 22, height: 18)
+        .frame(width: 18, height: 18)
     }
 }
 
@@ -683,7 +708,7 @@ struct MarkdownToolbarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         RoundedHoverButtonBody(
             configuration: configuration,
-            font: .system(size: 11, weight: .semibold),
+            font: .system(size: 15, weight: .semibold),
             normalOpacity: 0,
             hoverOpacity: 0.065,
             pressedOpacity: 0.10,
