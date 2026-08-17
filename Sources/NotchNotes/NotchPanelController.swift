@@ -416,25 +416,28 @@ final class NotchPanelController: NSObject {
         return frame
     }
 
-    private func clickActivationFrame(at point: NSPoint? = nil) -> NSRect {
-        let layout = currentLayout()
-        let screen = point.flatMap { screenContaining($0) } ?? targetScreen()
-        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        if let point, screen?.frame.contains(point) != true {
+    private func clickActivationFrame(at point: NSPoint) -> NSRect {
+        guard let screen = screenContaining(point) ?? targetScreen(), screen.frame.contains(point) else {
             return .zero
         }
-        if let physicalNotchFrame = screen?.physicalNotchFrame {
+        let layout = NotchGeometry.layout(for: screen)
+        let screenFrame = screen.frame
+        if let physicalNotchFrame = screen.physicalNotchFrame {
             return physicalNotchFrame.insetBy(dx: 2, dy: 1)
         }
 
-        let notchLimitSize = NotchGeometry.clickNotchLimit(
-            measuredNotchSize: screen?.measuredNotchSize ?? .zero,
+        let measuredNotchSize = screen.measuredNotchSize
+        let activationLimit = NotchGeometry.clickActivationLimit(
+            measuredNotchSize: measuredNotchSize,
+            menuBarWidth: screenFrame.width,
             menuBarHeight: NSMenu.menuBarHeight
         )
-        let size = NotchGeometry.clickActivationSize(
-            compactSize: layout.compactSize,
-            notchLimitSize: notchLimitSize
-        )
+        let size = measuredNotchSize == .zero
+            ? activationLimit
+            : NotchGeometry.clickActivationSize(
+                compactSize: layout.compactSize,
+                notchLimitSize: activationLimit
+            )
         return frame(
             for: size,
             topY: screenFrame.maxY + layout.compactTopOffset,

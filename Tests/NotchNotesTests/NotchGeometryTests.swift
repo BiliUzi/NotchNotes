@@ -42,11 +42,12 @@ final class NotchGeometryTests: XCTestCase {
 
     func testClickNotchLimitUsesMenuBarHeightWithoutNotch() {
         XCTAssertEqual(
-            NotchGeometry.clickNotchLimit(
+            NotchGeometry.clickActivationLimit(
                 measuredNotchSize: .zero,
+                menuBarWidth: 1920,
                 menuBarHeight: 30
             ),
-            NSSize(width: 300, height: 30)
+            NSSize(width: 320, height: 30)
         )
     }
 
@@ -76,8 +77,9 @@ final class NotchGeometryTests: XCTestCase {
 
     func testClickNotchLimitIsZeroWithoutNotchOrMenuBar() {
         XCTAssertEqual(
-            NotchGeometry.clickNotchLimit(
+            NotchGeometry.clickActivationLimit(
                 measuredNotchSize: .zero,
+                menuBarWidth: 0,
                 menuBarHeight: 0
             ),
             .zero
