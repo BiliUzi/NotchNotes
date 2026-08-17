@@ -39,6 +39,22 @@ extension NSScreen {
 
         return NSSize(width: notchWidth, height: safeAreaInsets.top)
     }
+
+    var physicalNotchFrame: NSRect? {
+        guard #available(macOS 12.0, *), safeAreaInsets.top > 0 else {
+            return nil
+        }
+
+        guard let leftArea = auxiliaryTopLeftArea, let rightArea = auxiliaryTopRightArea else {
+            return nil
+        }
+
+        return NotchGeometry.physicalNotchFrame(
+            screenFrame: frame,
+            leftArea: leftArea,
+            rightArea: rightArea
+        )
+    }
 }
 
 @MainActor
@@ -76,7 +92,25 @@ enum NotchGeometry {
         }
 
         guard safeAreaTop > 0 else { return .zero }
-        return NSSize(width: 120, height: safeAreaTop)
+        return NSSize(width: 120, height: min(safeAreaTop, 24))
+    }
+
+    static func physicalNotchFrame(
+        screenFrame: NSRect,
+        leftArea: NSRect,
+        rightArea: NSRect
+    ) -> NSRect? {
+        let notchWidth = rightArea.minX - leftArea.maxX
+        let notchBottom = max(leftArea.minY, rightArea.minY)
+        let notchHeight = screenFrame.maxY - notchBottom
+        guard notchWidth > 0, notchHeight > 0 else { return nil }
+
+        return NSRect(
+            x: leftArea.maxX,
+            y: notchBottom,
+            width: notchWidth,
+            height: notchHeight
+        )
     }
 
     static func clickActivationSize(compactSize: NSSize, notchLimitSize: NSSize) -> NSSize {

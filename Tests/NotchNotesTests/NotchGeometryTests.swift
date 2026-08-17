@@ -46,7 +46,18 @@ final class NotchGeometryTests: XCTestCase {
                 measuredNotchSize: .zero,
                 safeAreaTop: 32
             ),
-            NSSize(width: 120, height: 32)
+            NSSize(width: 120, height: 24)
+        )
+    }
+
+    func testPhysicalNotchFrameUsesAuxiliaryAreaGapAndBottomEdge() {
+        XCTAssertEqual(
+            NotchGeometry.physicalNotchFrame(
+                screenFrame: NSRect(x: 0, y: 0, width: 1512, height: 982),
+                leftArea: NSRect(x: 0, y: 958, width: 660, height: 24),
+                rightArea: NSRect(x: 852, y: 958, width: 660, height: 24)
+            ),
+            NSRect(x: 660, y: 958, width: 192, height: 24)
         )
     }
 

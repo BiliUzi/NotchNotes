@@ -324,7 +324,9 @@ struct MarkdownCommandLabel: View {
             case .orderedList:
                 TwoRowListIcon(style: .ordered)
             case .todoList:
-                TwoRowListIcon(style: .checklist)
+                Image(systemName: "checkmark.square")
+                    .resizable()
+                    .scaledToFit()
             }
         }
         .frame(width: 18, height: 18)
@@ -334,7 +336,6 @@ struct MarkdownCommandLabel: View {
 enum TwoRowListIconStyle {
     case unordered
     case ordered
-    case checklist
 }
 
 struct TwoRowListIcon: View {
@@ -353,17 +354,6 @@ struct TwoRowListIcon: View {
                         Text("\(row)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .frame(width: 6)
-                    case .checklist:
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 1)
-                                .stroke(lineWidth: 1)
-                                .frame(width: 5, height: 5)
-                            if row == 1 {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 4, weight: .bold))
-                            }
-                        }
-                        .frame(width: 6)
                     }
 
                     Capsule()
@@ -429,7 +419,10 @@ struct TabPagerControl: View {
 
                             Circle()
                                 .fill(isSelected ? Color.white.opacity(0.92) : Color.white.opacity(0.34))
-                                .frame(width: isSelected ? 7 : 6, height: isSelected ? 7 : 6)
+                                .frame(
+                                    width: isSelected ? 10.5 : 9,
+                                    height: isSelected ? 10.5 : 9
+                                )
                                 .shadow(color: .white.opacity(isSelected ? 0.42 : 0), radius: 3)
                         }
                         .frame(width: 26, height: 24)
@@ -464,6 +457,9 @@ struct TabPagerControl: View {
                 }
             } label: {
                 Image(systemName: "plus")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16.5, height: 16.5)
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
