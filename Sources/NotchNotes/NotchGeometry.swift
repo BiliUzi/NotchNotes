@@ -40,22 +40,6 @@ extension NSScreen {
         return NSSize(width: notchWidth, height: safeAreaInsets.top)
     }
 
-    var physicalNotchFrame: NSRect? {
-        guard #available(macOS 12.0, *), safeAreaInsets.top > 0 else {
-            return nil
-        }
-
-        guard let leftArea = auxiliaryTopLeftArea, let rightArea = auxiliaryTopRightArea else {
-            return nil
-        }
-
-        return NotchGeometry.physicalNotchFrame(
-            screenFrame: frame,
-            leftArea: leftArea,
-            rightArea: rightArea,
-            notchHeight: safeAreaInsets.top
-        )
-    }
 }
 
 @MainActor
@@ -87,7 +71,7 @@ enum NotchGeometry {
         )
     }
 
-    static func centerMenuBarFrame(
+    static func centerTopHoverFrame(
         screenFrame: NSRect,
         visibleFrame: NSRect,
         menuBarHeight: CGFloat
@@ -105,27 +89,4 @@ enum NotchGeometry {
         )
     }
 
-    nonisolated static func physicalNotchFrame(
-        screenFrame: NSRect,
-        leftArea: NSRect,
-        rightArea: NSRect,
-        notchHeight: CGFloat
-    ) -> NSRect? {
-        let notchWidth = rightArea.minX - leftArea.maxX
-        guard notchWidth > 0, notchHeight > 0, notchHeight <= screenFrame.height else { return nil }
-
-        return NSRect(
-            x: leftArea.maxX,
-            y: screenFrame.maxY - notchHeight,
-            width: notchWidth,
-            height: notchHeight
-        )
-    }
-
-    static func clickActivationSize(compactSize: NSSize, notchLimitSize: NSSize) -> NSSize {
-        NSSize(
-            width: max(min(compactSize.width, notchLimitSize.width), 0),
-            height: max(min(compactSize.height, notchLimitSize.height), 0)
-        )
-    }
 }

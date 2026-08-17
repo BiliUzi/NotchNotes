@@ -1287,14 +1287,13 @@
         <div class="base" aria-hidden="true"></div>
       </section>
 
-      <p class="caption">Open by hover or click · drag files in and out without moving the originals · tap the coffee cup to keep your Mac awake.</p>
+      <p class="caption">Open by hovering at the top center · drag files in and out without moving the originals · tap the coffee cup to keep your Mac awake.</p>
     </section>
   </main>
 
   <script>
     const screenEl = document.getElementById("demoScreen");
     const notch = screenEl.querySelector(".notch-stage");
-    const panel = screenEl.querySelector(".panel");
     const noteBody = screenEl.querySelector(".note-body");
     const tabDots = Array.from(screenEl.querySelectorAll(".dot[data-tab]"));
     const keepAwakeButton = screenEl.querySelector(".keep-awake");
@@ -1310,7 +1309,7 @@
           <h2>Launch todos</h2>
           <ul class="check-list">
             <li><span class="checkmark done"></span><span>Align the homepage demo with the current app.</span></li>
-            <li><span class="checkmark done"></span><span>Keep the collapsed notch invisible but clickable.</span></li>
+            <li><span class="checkmark done"></span><span>Keep the collapsed notch invisible until the top-center hover.</span></li>
             <li><span class="checkmark"></span><span>Record the new file shelf workflow.</span></li>
             <li><span class="checkmark"></span><span>Drag shelf files into Finder, apps, and web upload areas without moving the originals.</span></li>
             <li><span class="checkmark"></span><span>Ship the refreshed release notes.</span></li>
@@ -1374,7 +1373,7 @@
         html: `
           <h2>Later</h2>
           <ul class="check-list">
-            <li><span class="checkmark"></span><span>Try the click trigger for a full workday.</span></li>
+            <li><span class="checkmark"></span><span>Try the top-center hover trigger for a full workday.</span></li>
             <li><span class="checkmark"></span><span>Organize the temporary file shelf.</span></li>
             <li><span class="checkmark"></span><span>Plan the next small release.</span></li>
           </ul>
@@ -1443,16 +1442,6 @@
         isManual = false;
       }, 9000);
     };
-
-    notch.addEventListener("click", () => {
-      pauseAutomation();
-      setCursor("cursor-notch");
-      setOpen(!screenEl.classList.contains("is-open"));
-    });
-
-    panel.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
 
     tabDots.forEach((dot) => {
       dot.addEventListener("click", () => {
