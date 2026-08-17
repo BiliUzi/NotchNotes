@@ -315,10 +315,6 @@ struct MarkdownCommandLabel: View {
                 Image(systemName: "bold")
                     .resizable()
                     .scaledToFit()
-            case .italic:
-                Image(systemName: "italic")
-                    .resizable()
-                    .scaledToFit()
             case .unorderedList:
                 TwoRowListIcon(style: .unordered)
             case .orderedList:

@@ -3,7 +3,6 @@ import SwiftUI
 
 enum MarkdownCommand: CaseIterable, Identifiable {
     case bold
-    case italic
     case unorderedList
     case orderedList
     case todoList
@@ -11,7 +10,6 @@ enum MarkdownCommand: CaseIterable, Identifiable {
     var id: String {
         switch self {
         case .bold: return "bold"
-        case .italic: return "italic"
         case .unorderedList: return "unorderedList"
         case .orderedList: return "orderedList"
         case .todoList: return "todoList"
@@ -21,7 +19,6 @@ enum MarkdownCommand: CaseIterable, Identifiable {
     var help: String {
         switch self {
         case .bold: return "Bold"
-        case .italic: return "Italic"
         case .unorderedList: return "Bulleted list"
         case .orderedList: return "Numbered list"
         case .todoList: return "Todo list"
@@ -112,8 +109,6 @@ final class EditorInteractionState: ObservableObject {
         switch command {
         case .bold:
             wrapSelection(prefix: "**", suffix: "**", placeholder: "bold", in: textView)
-        case .italic:
-            wrapSelection(prefix: "*", suffix: "*", placeholder: "italic", in: textView)
         case .unorderedList:
             prefixSelectedLines(with: "- ", in: textView)
         case .orderedList:
