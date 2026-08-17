@@ -420,29 +420,25 @@ final class NotchPanelController: NSObject {
         guard let screen = screenContaining(point) ?? targetScreen(), screen.frame.contains(point) else {
             return .zero
         }
-        let layout = NotchGeometry.layout(for: screen)
         let screenFrame = screen.frame
         if let physicalNotchFrame = screen.physicalNotchFrame {
             return physicalNotchFrame.insetBy(dx: 2, dy: 1)
         }
 
+        if let menuBarFrame = NotchGeometry.centerMenuBarFrame(
+            screenFrame: screenFrame,
+            visibleFrame: screen.visibleFrame
+        ) {
+            return menuBarFrame
+        }
+
+        let layout = NotchGeometry.layout(for: screen)
         let measuredNotchSize = screen.measuredNotchSize
-        let activationLimit = NotchGeometry.clickActivationLimit(
-            measuredNotchSize: measuredNotchSize,
-            menuBarWidth: screenFrame.width,
-            menuBarHeight: max(screenFrame.maxY - screen.visibleFrame.maxY, 0)
+        let size = NotchGeometry.clickActivationSize(
+            compactSize: layout.compactSize,
+            notchLimitSize: measuredNotchSize
         )
-        let size = measuredNotchSize == .zero
-            ? activationLimit
-            : NotchGeometry.clickActivationSize(
-                compactSize: layout.compactSize,
-                notchLimitSize: activationLimit
-            )
-        return frame(
-            for: size,
-            topY: screenFrame.maxY + layout.compactTopOffset,
-            in: screenFrame
-        )
+        return frame(for: size, topY: screenFrame.maxY, in: screenFrame)
     }
 
     private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {

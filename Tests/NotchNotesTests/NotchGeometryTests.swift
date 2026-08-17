@@ -40,14 +40,13 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testClickNotchLimitUsesMenuBarHeightWithoutNotch() {
+    func testCenterMenuBarFrameUsesScreenWidthFractionAndVisibleBounds() {
         XCTAssertEqual(
-            NotchGeometry.clickActivationLimit(
-                measuredNotchSize: .zero,
-                menuBarWidth: 1920,
-                menuBarHeight: 30
+            NotchGeometry.centerMenuBarFrame(
+                screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
+                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1049)
             ),
-            NSSize(width: 320, height: 30)
+            NSRect(x: 800, y: 1049, width: 320, height: 31)
         )
     }
 
@@ -75,14 +74,13 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testClickNotchLimitIsZeroWithoutNotchOrMenuBar() {
+    func testCenterMenuBarFrameIsNilWithoutMenuBar() {
         XCTAssertEqual(
-            NotchGeometry.clickActivationLimit(
-                measuredNotchSize: .zero,
-                menuBarWidth: 0,
-                menuBarHeight: 0
+            NotchGeometry.centerMenuBarFrame(
+                screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
+                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080)
             ),
-            .zero
+            nil
         )
     }
 }

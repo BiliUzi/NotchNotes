@@ -87,17 +87,17 @@ enum NotchGeometry {
         )
     }
 
-    static func clickActivationLimit(
-        measuredNotchSize: NSSize,
-        menuBarWidth: CGFloat,
-        menuBarHeight: CGFloat
-    ) -> NSSize {
-        if measuredNotchSize != .zero {
-            return measuredNotchSize
-        }
+    static func centerMenuBarFrame(screenFrame: NSRect, visibleFrame: NSRect) -> NSRect? {
+        let menuBarHeight = screenFrame.maxY - visibleFrame.maxY
+        let menuBarWidth = screenFrame.width / 6
+        guard menuBarWidth > 0, menuBarHeight > 0 else { return nil }
 
-        guard menuBarWidth > 0, menuBarHeight > 0 else { return .zero }
-        return NSSize(width: menuBarWidth / 6, height: menuBarHeight)
+        return NSRect(
+            x: screenFrame.midX - menuBarWidth / 2,
+            y: visibleFrame.maxY,
+            width: menuBarWidth,
+            height: menuBarHeight
+        )
     }
 
     nonisolated static func physicalNotchFrame(
