@@ -5,7 +5,7 @@
 //  Created by Luca Chen on 16.03.26.
 //
 //  Bus-notification handlers wired up by `subscribeToBusNotifications`.
-//  These translate embedder-posted requests (apply bold / italic / heading
+//  These translate embedder-posted requests (apply bold / heading
 //  level) into the corresponding ContextMenu actions, and refresh styling
 //  when the syntax highlighter signals an appearance change.
 //
@@ -15,10 +15,6 @@ import AppKit
 extension NativeTextViewCoordinator {
     @objc func handleBoldNotification(_ notification: Notification) {
         didMarkdownBold(nil)
-    }
-
-    @objc func handleItalicNotification(_ notification: Notification) {
-        didMarkdownItalic(nil)
     }
 
     @objc func handleHeadingNotification(_ notification: Notification) {

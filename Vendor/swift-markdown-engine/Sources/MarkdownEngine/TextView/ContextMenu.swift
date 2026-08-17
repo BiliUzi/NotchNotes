@@ -25,9 +25,6 @@ extension NativeTextViewWrapper.Coordinator {
             let boldItem = NSMenuItem(title: "Bold", action: #selector(didMarkdownBold(_:)), keyEquivalent: "")
             boldItem.target = self
             formatSubmenu.addItem(boldItem)
-            let italicItem = NSMenuItem(title: "Italic", action: #selector(didMarkdownItalic(_:)), keyEquivalent: "")
-            italicItem.target = self
-            formatSubmenu.addItem(italicItem)
             formatItem.submenu = formatSubmenu
             customMenu.insertItem(formatItem, at: fontIndex)
 
@@ -158,28 +155,16 @@ extension NativeTextViewWrapper.Coordinator {
         pasteboard.setString(markdown, forType: .string)
     }
 
-    /// Returns the smallest bold or boldItalic token that fully contains the selection, or nil when the selection isn't enclosed by emphasis with a bold trait.
+    /// Returns the smallest bold token that fully contains the selection.
     func enclosingBoldToken(for selection: NSRange, in text: String) -> MarkdownToken? {
         let tokens = parsedDocument(for: text).tokens
         return tokens.first { token in
-            (token.kind == .bold || token.kind == .boldItalic) && tokenEncloses(token, selection: selection)
-        }
-    }
-
-    /// Returns the smallest italic or boldItalic token that fully contains the selection, or nil when the selection isn't enclosed by emphasis with an italic trait.
-    func enclosingItalicToken(for selection: NSRange, in text: String) -> MarkdownToken? {
-        let tokens = parsedDocument(for: text).tokens
-        return tokens.first { token in
-            (token.kind == .italic || token.kind == .boldItalic) && tokenEncloses(token, selection: selection)
+            token.kind == .bold && tokenEncloses(token, selection: selection)
         }
     }
 
     func isSelectionBold(in nsText: NSString, range: NSRange) -> Bool {
         return enclosingBoldToken(for: range, in: nsText as String) != nil
-    }
-
-    func isSelectionItalic(in nsText: NSString, range: NSRange) -> Bool {
-        return enclosingItalicToken(for: range, in: nsText as String) != nil
     }
 
     private func tokenEncloses(_ token: MarkdownToken, selection: NSRange) -> Bool {
@@ -275,9 +260,7 @@ extension NativeTextViewWrapper.Coordinator {
         let range = tv.selectedRange()
 
         if let token = enclosingBoldToken(for: range, in: tv.string) {
-            // Toggle off: bold → plain, boldItalic → italic.
-            let (left, right) = token.kind == .boldItalic ? ("*", "*") : ("", "")
-            unwrapToken(token, leftReplacement: left, rightReplacement: right)
+            unwrapToken(token, leftReplacement: "", rightReplacement: "")
             return
         }
 
@@ -287,25 +270,6 @@ extension NativeTextViewWrapper.Coordinator {
         }
 
         wrapSelection(with: "**")
-    }
-
-    @objc func didMarkdownItalic(_ sender: Any?) {
-        guard let tv = textView else { return }
-        let range = tv.selectedRange()
-
-        if let token = enclosingItalicToken(for: range, in: tv.string) {
-            // Toggle off: italic → plain, boldItalic → bold.
-            let (left, right) = token.kind == .boldItalic ? ("**", "**") : ("", "")
-            unwrapToken(token, leftReplacement: left, rightReplacement: right)
-            return
-        }
-
-        if range.length == 0 {
-            insertEmptyMarkers("*")
-            return
-        }
-
-        wrapSelection(with: "*")
     }
 
     private func insertEmptyMarkers(_ marker: String) {
@@ -352,9 +316,6 @@ extension NativeTextViewWrapper.Coordinator: NSMenuItemValidation {
         switch menuItem.action {
         case #selector(didMarkdownBold(_:)):
             menuItem.state = enclosingBoldToken(for: range, in: tv.string) != nil ? .on : .off
-            return true
-        case #selector(didMarkdownItalic(_:)):
-            menuItem.state = enclosingItalicToken(for: range, in: tv.string) != nil ? .on : .off
             return true
         case #selector(didMarkdownHeading(_:)):
             return !isSelectionHeading(level: menuItem.tag, in: nsText, range: range)

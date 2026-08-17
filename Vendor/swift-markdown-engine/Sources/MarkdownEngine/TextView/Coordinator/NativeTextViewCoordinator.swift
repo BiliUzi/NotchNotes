@@ -157,11 +157,6 @@ public final class NativeTextViewCoordinator: NSObject, NSTextViewDelegate {
                 self?.handleBoldNotification(notification)
             })
         }
-        if let name = bus.applyItalicRequest {
-            busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                self?.handleItalicNotification(notification)
-            })
-        }
         if let name = bus.applyHeadingRequest {
             busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
                 self?.handleHeadingNotification(notification)

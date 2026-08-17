@@ -16,8 +16,6 @@ extension NSAttributedString.Key {
 }
 
 enum MarkdownTokenKind {
-    case italic
-    case boldItalic
     case bold
     case link
     case wikiLink
