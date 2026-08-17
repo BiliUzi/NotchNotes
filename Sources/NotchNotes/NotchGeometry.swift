@@ -52,7 +52,8 @@ extension NSScreen {
         return NotchGeometry.physicalNotchFrame(
             screenFrame: frame,
             leftArea: leftArea,
-            rightArea: rightArea
+            rightArea: rightArea,
+            notchHeight: safeAreaInsets.top
         )
     }
 }
@@ -98,16 +99,15 @@ enum NotchGeometry {
     nonisolated static func physicalNotchFrame(
         screenFrame: NSRect,
         leftArea: NSRect,
-        rightArea: NSRect
+        rightArea: NSRect,
+        notchHeight: CGFloat
     ) -> NSRect? {
         let notchWidth = rightArea.minX - leftArea.maxX
-        let notchBottom = max(leftArea.minY, rightArea.minY)
-        let notchHeight = screenFrame.maxY - notchBottom
-        guard notchWidth > 0, notchHeight > 0 else { return nil }
+        guard notchWidth > 0, notchHeight > 0, notchHeight <= screenFrame.height else { return nil }
 
         return NSRect(
             x: leftArea.maxX,
-            y: notchBottom,
+            y: screenFrame.maxY - notchHeight,
             width: notchWidth,
             height: notchHeight
         )

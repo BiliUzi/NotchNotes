@@ -321,7 +321,8 @@ final class NotchPanelController: NSObject {
         hotPanel.onMouseEvent = { [weak self] event in
             guard let self else { return }
             guard event.type == .leftMouseDown else { return }
-            guard self.clickActivationFrame().contains(NSEvent.mouseLocation) else { return }
+            let location = NSEvent.mouseLocation
+            guard self.clickActivationFrame(at: location).contains(location) else { return }
             self.expand(animated: true, activate: true)
         }
 
@@ -343,10 +344,11 @@ final class NotchPanelController: NSObject {
 
     private func observeGlobalMouseEvents() {
         globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
+            let location = NSEvent.mouseLocation
             Task { @MainActor in
                 guard let self,
                       !self.isExpanded,
-                      self.clickActivationFrame().contains(NSEvent.mouseLocation) else {
+                      self.clickActivationFrame(at: location).contains(location) else {
                     return
                 }
                 self.expand(animated: true, activate: true)
@@ -414,10 +416,13 @@ final class NotchPanelController: NSObject {
         return frame
     }
 
-    private func clickActivationFrame() -> NSRect {
+    private func clickActivationFrame(at point: NSPoint? = nil) -> NSRect {
         let layout = currentLayout()
-        let screen = targetScreen()
+        let screen = point.flatMap { screen(containing: $0) } ?? targetScreen()
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        if let point, screen?.frame.contains(point) != true {
+            return .zero
+        }
         if let physicalNotchFrame = screen?.physicalNotchFrame {
             return physicalNotchFrame.insetBy(dx: 2, dy: 1)
         }
@@ -440,7 +445,11 @@ final class NotchPanelController: NSObject {
     private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {
         let margin: CGFloat = 10
         return drawerPanel.frame.insetBy(dx: -margin, dy: -margin).contains(point)
-            || clickActivationFrame().contains(point)
+            || clickActivationFrame(at: point).contains(point)
+    }
+
+    private func screen(containing point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first { $0.frame.contains(point) }
     }
 
     private func receiveDroppedFiles(_ urls: [URL]) -> Bool {

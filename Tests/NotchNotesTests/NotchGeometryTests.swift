@@ -55,7 +55,20 @@ final class NotchGeometryTests: XCTestCase {
             NotchGeometry.physicalNotchFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1512, height: 982),
                 leftArea: NSRect(x: 0, y: 958, width: 660, height: 24),
-                rightArea: NSRect(x: 852, y: 958, width: 660, height: 24)
+                rightArea: NSRect(x: 852, y: 958, width: 660, height: 24),
+                notchHeight: 24
+            ),
+            NSRect(x: 660, y: 958, width: 192, height: 24)
+        )
+    }
+
+    func testPhysicalNotchFrameIgnoresAuxiliaryAreaVerticalShape() {
+        XCTAssertEqual(
+            NotchGeometry.physicalNotchFrame(
+                screenFrame: NSRect(x: 0, y: 0, width: 1512, height: 982),
+                leftArea: NSRect(x: 0, y: 0, width: 660, height: 958),
+                rightArea: NSRect(x: 852, y: 0, width: 660, height: 958),
+                notchHeight: 24
             ),
             NSRect(x: 660, y: 958, width: 192, height: 24)
         )
