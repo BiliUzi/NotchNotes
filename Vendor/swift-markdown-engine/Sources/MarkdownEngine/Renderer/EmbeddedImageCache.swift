@@ -70,18 +70,6 @@ public struct ImageEmbedReference: Sendable {
         return mutable as String
     }
 
-    public var markdown: String {
-        var parts = [name]
-        if let nodeID {
-            parts.append(nodeID.uuidString)
-        }
-        if let requestedWidth, requestedWidth > 0 {
-            let widthValue = Double(requestedWidth)
-            parts.append(widthValue.rounded() == widthValue ? String(Int(widthValue)) : String(widthValue))
-        }
-        return "![[\(parts.joined(separator: "|"))]]"
-    }
-
     /// Convert to the engine-side request shape consumed by `EmbeddedImageProvider`.
     public var providerRequest: EmbeddedImageRequest {
         EmbeddedImageRequest(

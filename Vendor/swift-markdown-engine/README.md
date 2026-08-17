@@ -163,7 +163,6 @@ Every color the editor puts on screen reads from `MarkdownEditorTheme`:
 ```swift
 var theme = MarkdownEditorTheme.default
 theme.bodyText = .labelColor
-theme.findMatchHighlight = NSColor(named: "MyAccent")!
 
 var configuration = MarkdownEditorConfiguration.default
 configuration.theme = theme

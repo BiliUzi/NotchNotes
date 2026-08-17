@@ -40,6 +40,10 @@ final class NativeTextView: NSTextView {
     weak var layoutBridge: LayoutBridge?
     var baseFont: NSFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
 
+    override func menu(for event: NSEvent) -> NSMenu? {
+        nil
+    }
+
     // MARK: Caret-workaround state
     var caretIndicatorObservation: NSKeyValueObservation?
     weak var observedCaretIndicator: NSView?

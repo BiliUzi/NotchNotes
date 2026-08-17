@@ -156,7 +156,6 @@ extension NativeTextViewCoordinator {
         if isWritingToolsActive { return }
         let selRange = tv.selectedRange()
         let currentEventType = NSApp.currentEvent?.type
-        updateSelectionStates(tv)
         let selLoc = selRange.location
 
         let parsed = parsedDocument(for: tv.string)
@@ -281,19 +280,6 @@ extension NativeTextViewCoordinator {
             return handleBacktab(textView)
         }
         return false
-    }
-
-    func updateSelectionStates(_ tv: NSTextView) {
-        let nsText = tv.string as NSString
-        let selRange = tv.selectedRange()
-        let bus = configuration.services.bus
-        let center = NotificationCenter.default
-        if let name = bus.selectionBoldDidChange {
-            center.post(
-                name: name, object: nil,
-                userInfo: ["isBold": isSelectionBold(in: nsText, range: selRange)]
-            )
-        }
     }
 
     func handleBacktab(_ textView: NSTextView) -> Bool {

@@ -9,22 +9,15 @@ final class NotebookWorkspaceState: ObservableObject {
 
 struct FileShelfItem: Identifiable, Codable, Equatable {
     let id: UUID
-    let bookmarkData: Data?
     let fallbackPath: String
     let originalName: String
-    let addedAt: Date
     let isDirectory: Bool?
     let fileExtension: String?
 
     init(url: URL) {
         id = UUID()
-        // File bookmarks can block the main thread when they are created
-        // synchronously inside AppKit's drop callback. The shelf is temporary,
-        // so keeping the normalized path is sufficient and avoids that stall.
-        bookmarkData = nil
         fallbackPath = url.standardizedFileURL.path
         originalName = url.lastPathComponent
-        addedAt = Date()
         isDirectory = url.hasDirectoryPath
         fileExtension = url.pathExtension.isEmpty ? nil : url.pathExtension
     }
@@ -55,18 +48,11 @@ final class FileShelfStore: ObservableObject {
 
     @discardableResult
     func add(_ urls: [URL]) -> Int {
-        let existingPaths = Set(items.compactMap { resolvedURL(for: $0)?.standardizedFileURL.path })
-        var knownPaths = existingPaths
+        var knownPaths = Set(items.map { resolvedURL(for: $0).path })
         var addedItems: [FileShelfItem] = []
 
         for url in urls where url.isFileURL {
             let standardizedURL = url.standardizedFileURL
-
-            if items.contains(where: {
-                resolvedURL(for: $0)?.standardizedFileURL.path == standardizedURL.path
-            }) {
-                continue
-            }
 
             guard items.count + addedItems.count < Self.maximumItemCount else { break }
             guard knownPaths.insert(standardizedURL.path).inserted else { continue }
@@ -98,7 +84,7 @@ final class FileShelfStore: ObservableObject {
         save()
     }
 
-    func resolvedURL(for item: FileShelfItem) -> URL? {
+    func resolvedURL(for item: FileShelfItem) -> URL {
         URL(fileURLWithPath: item.fallbackPath).standardizedFileURL
     }
 

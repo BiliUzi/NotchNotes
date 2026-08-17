@@ -36,21 +36,6 @@ public struct MarkdownEditorTheme: Sendable {
     /// Foreground color for heading marker glyphs (`#`, `##`, …).
     public var headingMarker: NSColor
 
-    // MARK: Find / search highlights
-
-    /// Background color used to highlight all matches when the user is
-    /// running an in-document search.
-    ///
-    /// The default is `.systemYellow` so embedders that don't customize
-    /// this still get a sensible result. Apps with their own brand color
-    /// (for example, the Nodes app uses its custom yellow) should override
-    /// this to match their palette.
-    public var findMatchHighlight: NSColor
-    /// Background color used to highlight the currently-focused match
-    /// during in-document search. Typically a stronger version of
-    /// ``findMatchHighlight``.
-    public var findCurrentMatchHighlight: NSColor
-
     // MARK: LaTeX rendering
 
     /// Foreground color used when rendering LaTeX formulas in light mode.
@@ -64,16 +49,12 @@ public struct MarkdownEditorTheme: Sendable {
         bodyText: NSColor = .labelColor,
         mutedText: NSColor = .secondaryLabelColor,
         headingMarker: NSColor = .gray,
-        findMatchHighlight: NSColor = .systemYellow,
-        findCurrentMatchHighlight: NSColor = .systemYellow,
         latexLightModeText: NSColor = .black,
         latexDarkModeText: NSColor = .white
     ) {
         self.bodyText = bodyText
         self.mutedText = mutedText
         self.headingMarker = headingMarker
-        self.findMatchHighlight = findMatchHighlight
-        self.findCurrentMatchHighlight = findCurrentMatchHighlight
         self.latexLightModeText = latexLightModeText
         self.latexDarkModeText = latexDarkModeText
     }

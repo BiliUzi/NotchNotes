@@ -1,19 +1,14 @@
 import AppKit
 import SwiftUI
 
-enum MarkdownCommand: CaseIterable, Identifiable {
+enum MarkdownCommand: String, CaseIterable, Identifiable {
     case bold
     case unorderedList
     case orderedList
     case todoList
 
     var id: String {
-        switch self {
-        case .bold: return "bold"
-        case .unorderedList: return "unorderedList"
-        case .orderedList: return "orderedList"
-        case .todoList: return "todoList"
-        }
+        rawValue
     }
 
     var help: String {
@@ -27,21 +22,19 @@ enum MarkdownCommand: CaseIterable, Identifiable {
 }
 
 @MainActor
-final class EditorInteractionState: ObservableObject {
-    @Published private(set) var isDraggingSelection = false
+final class EditorInteractionState {
     var onSelectionChange: ((NSRange) -> Void)?
 
     private weak var textView: NSTextView?
     private weak var observedSelectionTextView: NSTextView?
     private var selectionObserver: NSObjectProtocol?
-    private var didStartInEditor = false
     private var pendingFocus = false
     private var pendingSelectionRange: NSRange?
     private var focusAttemptsRemaining = 0
     private var layoutRefreshGeneration = 0
     private var selectionRestoreGeneration = 0
 
-    func bind(containerView: NSView?, textView: NSTextView?) {
+    func bind(textView: NSTextView?) {
         if let textView {
             self.textView = textView
             observeSelectionChanges(in: textView)
@@ -59,10 +52,6 @@ final class EditorInteractionState: ObservableObject {
         focusAttemptsRemaining = 8
 
         retryFocus(searchingIn: rootView)
-    }
-
-    func resetSelectionToDocumentStart(searchingIn rootView: NSView? = nil) {
-        restoreSelection(NSRange(location: 0, length: 0), searchingIn: rootView)
     }
 
     func restoreSelection(
@@ -86,14 +75,14 @@ final class EditorInteractionState: ObservableObject {
         )
     }
 
-    func requestLayoutRefresh(searchingIn rootView: NSView? = nil, resetScroll: Bool = false) {
+    func requestLayoutRefresh(searchingIn rootView: NSView? = nil) {
         if let rootView {
             refreshTextView(searchingIn: rootView)
         }
 
         layoutRefreshGeneration += 1
         let generation = layoutRefreshGeneration
-        scheduleLayoutRefresh(generation: generation, remainingPasses: 4, searchingIn: rootView, resetScroll: resetScroll)
+        scheduleLayoutRefresh(generation: generation, remainingPasses: 4, searchingIn: rootView)
     }
 
     func currentSelectionRange() -> NSRange? {
@@ -121,34 +110,11 @@ final class EditorInteractionState: ObservableObject {
     }
 
     func handleMouseEvent(_ event: NSEvent, searchingIn rootView: NSView?) {
-        switch event.type {
-        case .leftMouseDown:
-            refreshTextView(searchingIn: rootView)
-            didStartInEditor = contains(event)
-            isDraggingSelection = false
-            if didStartInEditor {
-                focusEditor()
-            }
-        case .leftMouseDragged:
-            noteMouseDragged()
-        case .leftMouseUp:
-            resetDragState()
-        default:
-            break
+        guard event.type == .leftMouseDown else { return }
+        refreshTextView(searchingIn: rootView)
+        if contains(event) {
+            focusEditor()
         }
-    }
-
-    func noteGlobalMouseDragged() {
-        noteMouseDragged()
-    }
-
-    func noteGlobalMouseUp() {
-        resetDragState()
-    }
-
-    private func noteMouseDragged() {
-        guard didStartInEditor else { return }
-        isDraggingSelection = true
     }
 
     private func focusEditor() {
@@ -233,11 +199,7 @@ final class EditorInteractionState: ObservableObject {
     }
 
     private func safeSelectedRange(in textView: NSTextView) -> NSRange {
-        let fullLength = (textView.string as NSString).length
-        let selectedRange = textView.selectedRange()
-        let location = min(max(selectedRange.location, 0), fullLength)
-        let length = min(max(selectedRange.length, 0), fullLength - location)
-        return NSRange(location: location, length: length)
+        clampedRange(textView.selectedRange(), in: textView)
     }
 
     private func scheduleSelectionRestore(
@@ -296,8 +258,7 @@ final class EditorInteractionState: ObservableObject {
     private func scheduleLayoutRefresh(
         generation: Int,
         remainingPasses: Int,
-        searchingIn rootView: NSView?,
-        resetScroll: Bool
+        searchingIn rootView: NSView?
     ) {
         let delay: TimeInterval = remainingPasses == 4 ? 0.02 : 0.06
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak rootView] in
@@ -305,19 +266,18 @@ final class EditorInteractionState: ObservableObject {
             if let rootView {
                 self.refreshTextView(searchingIn: rootView)
             }
-            self.applyLayoutRefresh(resetScroll: resetScroll && remainingPasses == 4)
+            self.applyLayoutRefresh()
 
             guard remainingPasses > 1 else { return }
             self.scheduleLayoutRefresh(
                 generation: generation,
                 remainingPasses: remainingPasses - 1,
-                searchingIn: rootView,
-                resetScroll: false
+                searchingIn: rootView
             )
         }
     }
 
-    private func applyLayoutRefresh(resetScroll: Bool) {
+    private func applyLayoutRefresh() {
         guard let textView else { return }
 
         textView.layoutSubtreeIfNeeded()
@@ -331,10 +291,6 @@ final class EditorInteractionState: ObservableObject {
         }
 
         if let scrollView = textView.enclosingScrollView {
-            if resetScroll {
-                scrollView.contentView.scroll(to: NSPoint(x: 0, y: -scrollView.contentInsets.top))
-                scrollView.reflectScrolledClipView(scrollView.contentView)
-            }
             scrollView.layoutSubtreeIfNeeded()
             scrollView.contentView.needsDisplay = true
         }
@@ -373,11 +329,6 @@ final class EditorInteractionState: ObservableObject {
         textView = freshTextView
     }
 
-    private func resetDragState() {
-        didStartInEditor = false
-        isDraggingSelection = false
-    }
-
     private func contains(_ event: NSEvent) -> Bool {
         guard let textView,
               let window = textView.window,
@@ -409,7 +360,7 @@ struct EditorFocusBinder: NSViewRepresentable {
             let container = view.superview
             let textView = container?.firstDescendant(ofType: NSTextView.self)
                 ?? view.firstAncestorDescendant(ofType: NSTextView.self)
-            state.bind(containerView: container, textView: textView)
+            state.bind(textView: textView)
         }
     }
 }

@@ -134,22 +134,15 @@ public struct TextInsets: Sendable {
 /// The engine's default approach is to keep markers in the text storage but
 /// shrink them to a near-zero font size (`hiddenMarkerFontSize`). This avoids
 /// any range translation between displayed and stored text — cursor movement,
-/// find/replace, selection, and copy/paste all stay trivially correct.
+/// selection, and copy/paste all stay trivially correct.
 /// The trade-off is a sub-pixel residue at extreme zoom levels.
 public struct MarkerStyle: Sendable {
     /// Font size used for "hidden" inline markers. Effectively invisible at
     /// normal zoom while keeping displayed-range == stored-range.
     public var hiddenMarkerFontSize: CGFloat
-    /// Alpha applied to non-focused find matches when in-document search
-    /// highlights are visible. The focused match is drawn at full opacity.
-    public var findMatchHighlightAlpha: CGFloat
 
-    public init(
-        hiddenMarkerFontSize: CGFloat = 0.1,
-        findMatchHighlightAlpha: CGFloat = 0.65
-    ) {
+    public init(hiddenMarkerFontSize: CGFloat = 0.1) {
         self.hiddenMarkerFontSize = hiddenMarkerFontSize
-        self.findMatchHighlightAlpha = findMatchHighlightAlpha
     }
 
     public static let `default` = MarkerStyle()

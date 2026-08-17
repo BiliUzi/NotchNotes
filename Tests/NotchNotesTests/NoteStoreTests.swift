@@ -37,7 +37,7 @@ final class NoteStoreTests: XCTestCase {
         )
     }
 
-    func testDeletedNoteCanBeRestoredWithoutLosingContent() throws {
+    func testDeletingActiveNoteSelectsRemainingNote() throws {
         let environment = try makeEnvironment()
         defer { environment.cleanUp() }
 
@@ -50,14 +50,10 @@ final class NoteStoreTests: XCTestCase {
         store.addTab()
 
         store.selectTab(originalID)
-        store.removeActiveTab()
-        XCTAssertTrue(store.canRestoreDeletedNote)
+        store.removeTab(originalID)
         XCTAssertFalse(store.tabs.contains(where: { $0.id == originalID }))
-
-        store.restoreLastDeletedTab()
-        XCTAssertFalse(store.canRestoreDeletedNote)
-        XCTAssertEqual(store.activeTabID, originalID)
-        XCTAssertEqual(store.text, "Keep this note")
+        XCTAssertEqual(store.tabs.count, 1)
+        XCTAssertEqual(store.activeTabID, store.tabs[0].id)
     }
 
     func testDeletingInactiveNoteKeepsCurrentNoteActive() throws {
@@ -76,7 +72,6 @@ final class NoteStoreTests: XCTestCase {
 
         XCTAssertEqual(store.activeTabID, activeID)
         XCTAssertFalse(store.tabs.contains(where: { $0.id == firstID }))
-        XCTAssertTrue(store.canRestoreDeletedNote)
     }
 
     func testArchiveRecoversNotesWhenDefaultsDataIsMissing() throws {
@@ -99,6 +94,36 @@ final class NoteStoreTests: XCTestCase {
             archiveURL: environment.archiveURL
         )
         XCTAssertEqual(recovered.text, "Recovery copy")
+    }
+
+    func testLoadsLegacyTabsWithCreatedAtMetadata() throws {
+        struct LegacyNoteTab: Codable {
+            let id: UUID
+            let text: String
+            let createdAt: Date
+        }
+
+        let environment = try makeEnvironment()
+        defer { environment.cleanUp() }
+
+        let legacyTab = LegacyNoteTab(
+            id: UUID(),
+            text: "Legacy note",
+            createdAt: Date()
+        )
+        environment.defaults.set(
+            try JSONEncoder().encode([legacyTab]),
+            forKey: "notchNotes.tabs.v1"
+        )
+
+        let store = NoteStore(
+            defaults: environment.defaults,
+            archiveURL: environment.archiveURL
+        )
+
+        XCTAssertEqual(store.activeTabID, legacyTab.id)
+        XCTAssertEqual(store.text, legacyTab.text)
+        store.flush()
     }
 
     private func makeEnvironment() throws -> TestEnvironment {

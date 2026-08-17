@@ -25,11 +25,10 @@ final class FileShelfStoreTests: XCTestCase {
         let store = FileShelfStore(defaults: defaults)
         XCTAssertEqual(store.add([fileURL, fileURL]), 1)
         XCTAssertEqual(store.items.count, 1)
-        XCTAssertNil(store.items.first?.bookmarkData)
 
         let restoredStore = FileShelfStore(defaults: defaults)
         let restoredItem = try XCTUnwrap(restoredStore.items.first)
-        XCTAssertEqual(restoredStore.resolvedURL(for: restoredItem)?.path, fileURL.path)
+        XCTAssertEqual(restoredStore.resolvedURL(for: restoredItem).path, fileURL.path)
         XCTAssertTrue(restoredStore.isAvailable(restoredItem))
 
         restoredStore.remove(restoredItem)
@@ -48,7 +47,6 @@ final class FileShelfStoreTests: XCTestCase {
 
         XCTAssertEqual(store.add([unavailableURL]), 1)
         XCTAssertEqual(store.items.first?.fallbackPath, unavailableURL.path)
-        XCTAssertNil(store.items.first?.bookmarkData)
     }
 
     func testShelfRemovesSelectedItemsAsOneOperation() throws {

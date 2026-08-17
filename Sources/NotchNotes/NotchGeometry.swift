@@ -2,11 +2,8 @@ import AppKit
 import CoreGraphics
 
 struct NotchLayout: Equatable {
-    let notchSize: NSSize
     let compactSize: NSSize
     let expandedSize: NSSize
-    let compactTopOffset: CGFloat
-    let expandedTopOffset: CGFloat
 }
 
 extension NSScreen {
@@ -29,7 +26,7 @@ extension NSScreen {
     }
 
     var measuredNotchSize: NSSize {
-        guard #available(macOS 12.0, *), safeAreaInsets.top > 0 else {
+        guard safeAreaInsets.top > 0 else {
             return .zero
         }
 
@@ -68,11 +65,8 @@ enum NotchGeometry {
         let expandedHeight = min(max(notch.height + 374, 408), screenFrame.height - 84)
 
         return NotchLayout(
-            notchSize: notch,
             compactSize: NSSize(width: compactWidth, height: compactHeight),
-            expandedSize: NSSize(width: expandedWidth, height: expandedHeight),
-            compactTopOffset: 0,
-            expandedTopOffset: 0
+            expandedSize: NSSize(width: expandedWidth, height: expandedHeight)
         )
     }
 

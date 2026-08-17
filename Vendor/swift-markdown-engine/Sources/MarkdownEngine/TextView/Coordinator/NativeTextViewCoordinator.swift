@@ -25,11 +25,9 @@ public final class NativeTextViewCoordinator: NSObject, NSTextViewDelegate {
     var fontSize: CGFloat
     var configuration: MarkdownEditorConfiguration = .default {
         didSet {
-            subscribeToBusNotifications(replacing: oldValue.services.bus)
             subscribeToAppearanceNotification()
         }
     }
-    private var busObservers: [NSObjectProtocol] = []
     private var registeredAppearanceObserverName: Notification.Name?
     weak var textView: NSTextView?
     var layoutBridge: LayoutBridge?
@@ -105,54 +103,17 @@ public final class NativeTextViewCoordinator: NSObject, NSTextViewDelegate {
         registeredAppearanceObserverName = name
     }
 
-    /// Subscribe to whichever bus notification names the current configuration
-    /// supplies. Removes any previous subscriptions first so that swapping
-    /// configurations at runtime doesn't double-fire handlers.
-    private func subscribeToBusNotifications(replacing previous: MarkdownEditorBus) {
-        busObservers.forEach(NotificationCenter.default.removeObserver(_:))
-        busObservers.removeAll(keepingCapacity: true)
-
-        let bus = configuration.services.bus
-        let center = NotificationCenter.default
-
-        if let name = bus.applyBoldRequest {
-            busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                self?.handleBoldNotification(notification)
-            })
-        }
-        if let name = bus.applyHeadingRequest {
-            busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                self?.handleHeadingNotification(notification)
-            })
-        }
-        if let name = bus.findScrollToRange {
-            busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                self?.handleFindScrollToRange(notification)
-            })
-        }
-        if let name = bus.findClearHighlights {
-            busObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
-                self?.handleFindClearHighlights(notification)
-            })
-        }
-    }
-
-    // Find-in-document highlight handlers live in
-    // `NativeTextViewCoordinator+Find.swift`.
-
     // Methods are split across the following extensions:
     //   - +TextDelegate    — NSTextViewDelegate hot path
     //   - +Restyling       — restyle pipeline + parsedDocument cache
     //   - +InlineSelection — image-embed activation
     //   - +CodeBlocks      — copy-button overlay
-    //   - +Find            — find-in-document highlights
-    //   - +Notifications   — bus + appearance bridge
+    //   - +Notifications   — appearance refresh
     //   - +Autocorrect     — spell/grammar/quote toggles
     //   - +WritingTools    — macOS 15+ Writing Tools session
 
     deinit {
         NotificationCenter.default.removeObserver(self)
-        busObservers.forEach(NotificationCenter.default.removeObserver(_:))
     }
 }
 

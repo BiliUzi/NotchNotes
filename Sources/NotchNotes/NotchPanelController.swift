@@ -58,13 +58,13 @@ final class CompactFileDropHostingView<Content: View>: TransparentHitHostingView
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        guard supportsFileURLs(sender.draggingPasteboard) else { return [] }
+        guard FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard) else { return [] }
         setFileDragTargeted(true)
         return .copy
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        supportsFileURLs(sender.draggingPasteboard) ? .copy : []
+        FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard) ? .copy : []
     }
 
     override func draggingExited(_ sender: NSDraggingInfo?) {
@@ -76,7 +76,7 @@ final class CompactFileDropHostingView<Content: View>: TransparentHitHostingView
     }
 
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        supportsFileURLs(sender.draggingPasteboard)
+        FileDropPasteboardReader.containsFileURLs(sender.draggingPasteboard)
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
@@ -84,10 +84,6 @@ final class CompactFileDropHostingView<Content: View>: TransparentHitHostingView
         let urls = FileDropPasteboardReader.fileURLs(from: sender.draggingPasteboard)
         guard !urls.isEmpty else { return false }
         return onFilesDropped?(urls) ?? false
-    }
-
-    private func supportsFileURLs(_ pasteboard: NSPasteboard) -> Bool {
-        pasteboard.availableType(from: [.fileURL]) != nil
     }
 
     private func setFileDragTargeted(_ isTargeted: Bool) {
@@ -207,14 +203,6 @@ final class NotchPanelController: NSObject {
             self.hotPanel.ignoresMouseEvents = true
             self.hotPanel.orderFrontRegardless()
         }
-    }
-
-    func createNote() {
-        if let range = editorInteractionState.currentSelectionRange() {
-            store.updateSelection(for: store.activeTabID, range: range)
-        }
-        store.addTab()
-        expand(animated: true, activate: true)
     }
 
     private func configurePanel(_ panel: NotchPanel) {
@@ -365,7 +353,6 @@ final class NotchPanelController: NSObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.isLeftMouseDragging = true
-                self.editorInteractionState.noteGlobalMouseDragged()
                 self.handleMouseLocation(NSEvent.mouseLocation)
             }
         }
@@ -375,7 +362,6 @@ final class NotchPanelController: NSObject {
                 guard let self else { return }
                 self.isLeftMouseDragging = false
                 self.dragPasteboardChangeCountAtMouseDown = nil
-                self.editorInteractionState.noteGlobalMouseUp()
                 self.workspaceState.isDraggingShelfItem = false
                 self.resetFileDropState()
                 self.finishFileDragRevealIfNeeded()
@@ -562,19 +548,18 @@ final class NotchPanelController: NSObject {
             width: layout.compactSize.width,
             height: layout.compactSize.height + 28
         )
-        return frame(for: dropTargetSize, topY: screenFrame.maxY + layout.compactTopOffset, in: screenFrame)
+        return frame(for: dropTargetSize, in: screenFrame)
     }
 
     private func drawerFrame(for layout: NotchLayout) -> NSRect {
         let screen = targetScreen()
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let topY = screenFrame.maxY + layout.expandedTopOffset
-        return frame(for: layout.expandedSize, topY: topY, in: screenFrame)
+        return frame(for: layout.expandedSize, in: screenFrame)
     }
 
-    private func frame(for size: NSSize, topY: CGFloat, in screenFrame: NSRect) -> NSRect {
+    private func frame(for size: NSSize, in screenFrame: NSRect) -> NSRect {
         let x = screenFrame.midX - size.width / 2
-        let y = topY - size.height
+        let y = screenFrame.maxY - size.height
 
         return NSRect(x: x, y: y, width: size.width, height: size.height)
     }

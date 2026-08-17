@@ -4,14 +4,12 @@ import Foundation
 struct NoteTab: Identifiable, Codable, Equatable {
     var id: UUID
     var text: String
-    var createdAt: Date
     var selectionLocation: Int?
     var selectionLength: Int?
 
-    init(id: UUID = UUID(), text: String = "", createdAt: Date = Date()) {
+    init(id: UUID = UUID(), text: String = "") {
         self.id = id
         self.text = text
-        self.createdAt = createdAt
         selectionLocation = 0
         selectionLength = 0
     }
@@ -35,16 +33,10 @@ final class NoteStore: ObservableObject {
         let savedAt: Date
     }
 
-    private struct DeletedNote {
-        let tab: NoteTab
-        let index: Int
-    }
-
     private let defaults: UserDefaults
     private let archiveURL: URL?
     private let persistenceQueue = DispatchQueue(label: "io.github.biliuzi.NotchNotes.persistence")
     private var pendingSave: DispatchWorkItem?
-    private var recentlyDeletedNote: DeletedNote?
 
     init(
         defaults: UserDefaults = .standard,
@@ -87,20 +79,11 @@ final class NoteStore: ObservableObject {
         scheduleSave()
     }
 
-    func clear() {
-        updateText("")
-        updateSelection(for: activeTabID, range: NSRange(location: 0, length: 0))
-    }
-
     func addTab() {
         let tab = NoteTab()
         tabs.append(tab)
         activeTabID = tab.id
         scheduleSave()
-    }
-
-    func removeActiveTab() {
-        removeTab(activeTabID)
     }
 
     func removeTab(_ id: UUID) {
@@ -110,20 +93,11 @@ final class NoteStore: ObservableObject {
         }
 
         let wasActive = id == activeTabID
-        recentlyDeletedNote = DeletedNote(tab: tabs.remove(at: removedIndex), index: removedIndex)
+        tabs.remove(at: removedIndex)
         if wasActive {
             let nextIndex = min(removedIndex, tabs.count - 1)
             activeTabID = tabs[nextIndex].id
         }
-        scheduleSave()
-    }
-
-    func restoreLastDeletedTab() {
-        guard let recentlyDeletedNote else { return }
-        let insertionIndex = min(max(recentlyDeletedNote.index, 0), tabs.count)
-        tabs.insert(recentlyDeletedNote.tab, at: insertionIndex)
-        activeTabID = recentlyDeletedNote.tab.id
-        self.recentlyDeletedNote = nil
         scheduleSave()
     }
 
@@ -172,10 +146,6 @@ final class NoteStore: ObservableObject {
         title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return "Untitled \(index + 1)" }
         return title.count > 42 ? String(title.prefix(41)) + "…" : title
-    }
-
-    var canRestoreDeletedNote: Bool {
-        recentlyDeletedNote != nil
     }
 
     func flush(waitForDisk: Bool = true) {

@@ -80,7 +80,6 @@ configuration.services = services
 ### Services Container
 
 - ``MarkdownEditorServices``
-- ``MarkdownEditorBus``
 
 ### Default No-Op Implementations
 

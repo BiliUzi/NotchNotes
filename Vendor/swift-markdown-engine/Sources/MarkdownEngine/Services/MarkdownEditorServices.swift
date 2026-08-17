@@ -56,18 +56,6 @@ public struct NoOpEmbeddedImageProvider: EmbeddedImageProvider {
     public func fingerprint() -> AnyHashable { 0 }
 }
 
-/// Optional extension for embedders that store image assets on disk.
-/// The editor uses this only for contextual file actions; rendering still
-/// goes through ``EmbeddedImageProvider/image(for:)``.
-public protocol EmbeddedImageFileProvider: EmbeddedImageProvider {
-    /// Returns the app-managed copy for a pasted image, if one exists.
-    func storedFileURL(for reference: EmbeddedImageRequest) -> URL?
-
-    /// Returns the original source file URL when the pasteboard provided one.
-    /// Clipboard bitmaps and screenshots usually do not have an original file.
-    func originalFileURL(for reference: EmbeddedImageRequest) -> URL?
-}
-
 // MARK: - Syntax Highlighting
 
 /// Provides code-block font, background color, and syntax highlighting.
@@ -144,46 +132,6 @@ public struct NoOpLatexRenderer: LatexRenderer {
     public func render(latex: String, fontSize: CGFloat, theme: MarkdownEditorTheme) -> LatexRenderResult? { nil }
 }
 
-// MARK: - Event Bus
-
-/// Optional notification-name bridge that lets the editor communicate with
-/// surrounding UI without hard-coding any names of its own.
-///
-/// The engine observes the request notifications it is configured with and
-/// posts the response notifications when supplied. Embedders that don't
-/// need cross-view formatting commands simply leave every name `nil`.
-public struct MarkdownEditorBus: Sendable {
-    /// Posted by the host UI to request the engine apply bold styling.
-    public var applyBoldRequest: Notification.Name?
-    /// Posted by the host UI to request the engine apply a heading level.
-    /// Expected `userInfo["level"] as? Int`.
-    public var applyHeadingRequest: Notification.Name?
-    /// Posted by the engine after every selection change with `userInfo["isBold"] as? Bool`.
-    public var selectionBoldDidChange: Notification.Name?
-    /// Posted by the host UI to scroll an in-document find match into view
-    /// and highlight all matches. Expected `userInfo["range"] as? NSRange`,
-    /// `userInfo["currentIndex"] as? Int`, `userInfo["allRanges"] as? [NSRange]`.
-    public var findScrollToRange: Notification.Name?
-    /// Posted by the host UI to clear all in-document find highlights.
-    public var findClearHighlights: Notification.Name?
-
-    public init(
-        applyBoldRequest: Notification.Name? = nil,
-        applyHeadingRequest: Notification.Name? = nil,
-        selectionBoldDidChange: Notification.Name? = nil,
-        findScrollToRange: Notification.Name? = nil,
-        findClearHighlights: Notification.Name? = nil
-    ) {
-        self.applyBoldRequest = applyBoldRequest
-        self.applyHeadingRequest = applyHeadingRequest
-        self.selectionBoldDidChange = selectionBoldDidChange
-        self.findScrollToRange = findScrollToRange
-        self.findClearHighlights = findClearHighlights
-    }
-
-    public static let `default` = MarkdownEditorBus()
-}
-
 // MARK: - Services Container
 
 /// Bundles every external service the engine needs.
@@ -195,18 +143,15 @@ public struct MarkdownEditorServices: Sendable {
     public var images: any EmbeddedImageProvider
     public var syntaxHighlighter: any SyntaxHighlighter
     public var latex: any LatexRenderer
-    public var bus: MarkdownEditorBus
 
     public init(
         images: any EmbeddedImageProvider = NoOpEmbeddedImageProvider(),
         syntaxHighlighter: any SyntaxHighlighter = PlainTextSyntaxHighlighter(),
-        latex: any LatexRenderer = NoOpLatexRenderer(),
-        bus: MarkdownEditorBus = .default
+        latex: any LatexRenderer = NoOpLatexRenderer()
     ) {
         self.images = images
         self.syntaxHighlighter = syntaxHighlighter
         self.latex = latex
-        self.bus = bus
     }
 
     public static let `default` = MarkdownEditorServices()

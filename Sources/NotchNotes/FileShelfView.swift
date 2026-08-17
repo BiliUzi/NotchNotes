@@ -261,7 +261,7 @@ private struct FileShelfItemFramePreferenceKey: PreferenceKey {
 private struct FileShelfChip: View {
     let item: FileShelfItem
     @ObservedObject var store: FileShelfStore
-    @ObservedObject var workspaceState: NotebookWorkspaceState
+    let workspaceState: NotebookWorkspaceState
     let isSelected: Bool
     let onSelect: (NSEvent.ModifierFlags) -> Void
     let onDeleteSelected: () -> Void
@@ -276,12 +276,11 @@ private struct FileShelfChip: View {
 
     @ViewBuilder
     private var draggableChip: some View {
-        if let url, isAvailable {
+        if isAvailable {
             chip
                 .overlay {
                     FileDragSourceView(
                         url: url,
-                        displayName: displayName,
                         onDragBegan: {
                             workspaceState.isDraggingShelfItem = true
                             workspaceState.isShelfDropTargeted = false
@@ -371,7 +370,7 @@ private struct FileShelfChip: View {
         .accessibilityLabel(displayName)
     }
 
-    private var url: URL? {
+    private var url: URL {
         store.resolvedURL(for: item)
     }
 
@@ -380,7 +379,7 @@ private struct FileShelfChip: View {
     }
 
     private var displayName: String {
-        guard let url, isAvailable else { return item.originalName }
+        guard isAvailable else { return item.originalName }
         return url.lastPathComponent
     }
 
@@ -408,12 +407,12 @@ private struct FileShelfChip: View {
     }
 
     private func open() {
-        guard let url, isAvailable else { return }
+        guard isAvailable else { return }
         NSWorkspace.shared.open(url)
     }
 
     private func revealInFinder() {
-        guard let url, isAvailable else { return }
+        guard isAvailable else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
@@ -426,7 +425,6 @@ private struct FileShelfChip: View {
 
 private struct FileDragSourceView: NSViewRepresentable {
     let url: URL
-    let displayName: String
     let onDragBegan: () -> Void
     let onDragEnded: () -> Void
     let onHoverChange: (Bool) -> Void
@@ -442,7 +440,6 @@ private struct FileDragSourceView: NSViewRepresentable {
 
     func updateNSView(_ nsView: FileDragSourceNSView, context: Context) {
         nsView.url = url
-        nsView.displayName = displayName
         nsView.onDragBegan = onDragBegan
         nsView.onDragEnded = onDragEnded
         nsView.onHoverChange = onHoverChange
@@ -457,7 +454,6 @@ private struct FileDragSourceView: NSViewRepresentable {
 @MainActor
 private final class FileDragSourceNSView: NSView, NSDraggingSource {
     var url: URL?
-    var displayName = ""
     var onDragBegan: (() -> Void)?
     var onDragEnded: (() -> Void)?
     var onHoverChange: ((Bool) -> Void)?
