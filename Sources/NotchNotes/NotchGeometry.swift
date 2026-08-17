@@ -95,7 +95,7 @@ enum NotchGeometry {
         return NSSize(width: 120, height: min(safeAreaTop, 24))
     }
 
-    static func physicalNotchFrame(
+    nonisolated static func physicalNotchFrame(
         screenFrame: NSRect,
         leftArea: NSRect,
         rightArea: NSRect
