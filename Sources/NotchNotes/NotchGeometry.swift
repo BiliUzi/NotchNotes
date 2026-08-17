@@ -87,13 +87,13 @@ enum NotchGeometry {
         )
     }
 
-    static func clickNotchLimit(measuredNotchSize: NSSize, safeAreaTop: CGFloat) -> NSSize {
+    static func clickNotchLimit(measuredNotchSize: NSSize, menuBarHeight: CGFloat) -> NSSize {
         if measuredNotchSize != .zero {
             return measuredNotchSize
         }
 
-        guard safeAreaTop > 0 else { return .zero }
-        return NSSize(width: 120, height: min(safeAreaTop, 24))
+        guard menuBarHeight > 0 else { return .zero }
+        return NSSize(width: 120, height: menuBarHeight)
     }
 
     nonisolated static func physicalNotchFrame(

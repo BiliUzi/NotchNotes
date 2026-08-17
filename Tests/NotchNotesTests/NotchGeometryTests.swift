@@ -40,13 +40,13 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testClickNotchLimitUsesConservativeWidthWithSafeArea() {
+    func testClickNotchLimitUsesMenuBarHeightWithoutNotch() {
         XCTAssertEqual(
             NotchGeometry.clickNotchLimit(
                 measuredNotchSize: .zero,
-                safeAreaTop: 32
+                menuBarHeight: 30
             ),
-            NSSize(width: 120, height: 24)
+            NSSize(width: 120, height: 30)
         )
     }
 
@@ -74,11 +74,11 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testClickNotchLimitIsZeroWithoutNotchOrSafeArea() {
+    func testClickNotchLimitIsZeroWithoutNotchOrMenuBar() {
         XCTAssertEqual(
             NotchGeometry.clickNotchLimit(
                 measuredNotchSize: .zero,
-                safeAreaTop: 0
+                menuBarHeight: 0
             ),
             .zero
         )
