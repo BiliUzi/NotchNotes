@@ -430,7 +430,7 @@ final class NotchPanelController: NSObject {
         let activationLimit = NotchGeometry.clickActivationLimit(
             measuredNotchSize: measuredNotchSize,
             menuBarWidth: screenFrame.width,
-            menuBarHeight: NSMenu.menuBarHeight
+            menuBarHeight: max(screenFrame.maxY - screen.visibleFrame.maxY, 0)
         )
         let size = measuredNotchSize == .zero
             ? activationLimit
