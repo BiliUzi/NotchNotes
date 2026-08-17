@@ -44,9 +44,10 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(
             NotchGeometry.centerMenuBarFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
-                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1049)
+                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1049),
+                menuBarHeight: 30
             ),
-            NSRect(x: 800, y: 1049, width: 320, height: 31)
+            NSRect(x: 800, y: 1050, width: 320, height: 30)
         )
     }
 
@@ -78,7 +79,8 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(
             NotchGeometry.centerMenuBarFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
-                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080)
+                visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
+                menuBarHeight: 30
             ),
             nil
         )

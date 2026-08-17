@@ -427,7 +427,8 @@ final class NotchPanelController: NSObject {
 
         if let menuBarFrame = NotchGeometry.centerMenuBarFrame(
             screenFrame: screenFrame,
-            visibleFrame: screen.visibleFrame
+            visibleFrame: screen.visibleFrame,
+            menuBarHeight: NSApp.mainMenu?.menuBarHeight ?? 0
         ) {
             return menuBarFrame
         }

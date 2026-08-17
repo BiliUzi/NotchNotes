@@ -87,16 +87,21 @@ enum NotchGeometry {
         )
     }
 
-    static func centerMenuBarFrame(screenFrame: NSRect, visibleFrame: NSRect) -> NSRect? {
-        let menuBarHeight = screenFrame.maxY - visibleFrame.maxY
+    static func centerMenuBarFrame(
+        screenFrame: NSRect,
+        visibleFrame: NSRect,
+        menuBarHeight: CGFloat
+    ) -> NSRect? {
+        let reservedTopHeight = screenFrame.maxY - visibleFrame.maxY
+        let activationHeight = min(menuBarHeight, reservedTopHeight)
         let menuBarWidth = screenFrame.width / 6
-        guard menuBarWidth > 0, menuBarHeight > 0 else { return nil }
+        guard menuBarWidth > 0, activationHeight > 0 else { return nil }
 
         return NSRect(
             x: screenFrame.midX - menuBarWidth / 2,
-            y: visibleFrame.maxY,
+            y: screenFrame.maxY - activationHeight,
             width: menuBarWidth,
-            height: menuBarHeight
+            height: activationHeight
         )
     }
 
