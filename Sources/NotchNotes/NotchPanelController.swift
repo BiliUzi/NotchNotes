@@ -418,7 +418,7 @@ final class NotchPanelController: NSObject {
 
     private func clickActivationFrame(at point: NSPoint? = nil) -> NSRect {
         let layout = currentLayout()
-        let screen = point.flatMap { screen(containing: $0) } ?? targetScreen()
+        let screen = point.flatMap { screenContaining($0) } ?? targetScreen()
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         if let point, screen?.frame.contains(point) != true {
             return .zero
@@ -448,7 +448,7 @@ final class NotchPanelController: NSObject {
             || clickActivationFrame(at: point).contains(point)
     }
 
-    private func screen(containing point: NSPoint) -> NSScreen? {
+    private func screenContaining(_ point: NSPoint) -> NSScreen? {
         NSScreen.screens.first { $0.frame.contains(point) }
     }
 
