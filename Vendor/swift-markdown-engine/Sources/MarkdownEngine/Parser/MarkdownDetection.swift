@@ -48,7 +48,7 @@ enum MarkdownDetection {
 
     /// Slow: parses tokens each call
     static func isInsideCodeBlock(range: NSRange, in text: String) -> Bool {
-        let codeTokens = MarkdownTokenizer.parseTokens(in: text).filter { $0.kind == .codeBlock || $0.kind == .inlineCode }
+        let codeTokens = MarkdownTokenizer.parseTokens(in: text).filter { $0.kind == .codeBlock }
         return isInsideCodeBlock(range: range, codeTokens: codeTokens)
     }
 

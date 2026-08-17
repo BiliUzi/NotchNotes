@@ -4,7 +4,7 @@
 //
 //  Created by Luca Chen on 16.03.26.
 //
-//  GitHub-style `- [ ] / - [x]` task checkbox styling and strike-through.
+//  GitHub-style `- [ ] / - [x]` task checkbox styling.
 //
 
 import AppKit
@@ -35,32 +35,6 @@ extension MarkdownStyler {
                     if lastIndex >= syntaxStart && lastIndex < ctx.nsText.length {
                         let lastChar = ctx.nsText.substring(with: NSRange(location: lastIndex, length: 1))
                         if lastChar != "\n" { isActiveSyntax = true }
-                    }
-                }
-                if isChecked {
-                    let lineRange = ctx.nsText.lineRange(for: checkboxRange)
-                    var lineEnd = lineRange.location + lineRange.length
-                    if lineEnd > lineRange.location {
-                        let lastCharRange = NSRange(location: lineEnd - 1, length: 1)
-                        if ctx.nsText.substring(with: lastCharRange) == "\n" {
-                            lineEnd -= 1
-                        }
-                    }
-                    var contentStart = checkboxRange.location + checkboxRange.length
-                    while contentStart < lineEnd {
-                        let charRange = NSRange(location: contentStart, length: 1)
-                        let char = ctx.nsText.substring(with: charRange)
-                        if char == " " || char == "\t" {
-                            contentStart += 1
-                            continue
-                        }
-                        break
-                    }
-                    if contentStart < lineEnd {
-                        attrs.append((NSRange(location: contentStart, length: lineEnd - contentStart), [
-                            .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                            .strikethroughColor: ctx.configuration.theme.strikethroughColor
-                        ]))
                     }
                 }
                 if isActiveSyntax { continue }

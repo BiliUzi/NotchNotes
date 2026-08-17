@@ -6,52 +6,14 @@
 //
 //  Protocols and default implementations for engine-side dependencies.
 //
-//  The Markdown editor engine resolves wiki-links, syntax highlighting,
-//  LaTeX rendering, and embedded image lookup through these protocols.
+//  The Markdown editor engine resolves syntax highlighting, LaTeX rendering,
+//  and embedded image lookup through these protocols.
 //  Embedders supply the concrete implementations; the engine never
 //  reaches into the host app for any of these concerns.
 //
 
 import AppKit
 import Foundation
-
-// MARK: - Wiki Links
-
-/// Resolves a wiki-link's display name to a stable storage identifier.
-///
-/// The engine stores wiki-links as `[[Name|<id>]]` and displays them as
-/// `[[Name]]`. The resolver maps a display name (and the range it occupies
-/// in the document) to whatever stable identifier the embedder uses for
-/// linked content. The identifier is opaque to the engine.
-public protocol WikiLinkResolver: Sendable {
-    /// Resolve a wiki-link by its visible name.
-    ///
-    /// - Parameters:
-    ///   - displayName: The text inside `[[ ]]` as the user sees it.
-    ///   - range: The character range the link occupies in the document.
-    /// - Returns: A resolution if the link points at known content; `nil` otherwise.
-    func resolve(displayName: String, range: NSRange) -> WikiLinkResolution?
-}
-
-/// The result of resolving a wiki-link.
-public struct WikiLinkResolution: Sendable, Equatable {
-    /// Stable identifier persisted in the storage form `[[Name|<id>]]`.
-    public let id: String
-    /// Whether the linked target currently exists/is reachable.
-    public let exists: Bool
-
-    public init(id: String, exists: Bool) {
-        self.id = id
-        self.exists = exists
-    }
-}
-
-/// Default resolver that never resolves anything. Useful when an embedder
-/// doesn't ship wiki-link support.
-public struct NoOpWikiLinkResolver: WikiLinkResolver {
-    public init() {}
-    public func resolve(displayName: String, range: NSRange) -> WikiLinkResolution? { nil }
-}
 
 // MARK: - Embedded Images
 
@@ -230,20 +192,17 @@ public struct MarkdownEditorBus: Sendable {
 /// dependencies exclusively from this container; embedders inject the
 /// implementations they want.
 public struct MarkdownEditorServices: Sendable {
-    public var wikiLinks: any WikiLinkResolver
     public var images: any EmbeddedImageProvider
     public var syntaxHighlighter: any SyntaxHighlighter
     public var latex: any LatexRenderer
     public var bus: MarkdownEditorBus
 
     public init(
-        wikiLinks: any WikiLinkResolver = NoOpWikiLinkResolver(),
         images: any EmbeddedImageProvider = NoOpEmbeddedImageProvider(),
         syntaxHighlighter: any SyntaxHighlighter = PlainTextSyntaxHighlighter(),
         latex: any LatexRenderer = NoOpLatexRenderer(),
         bus: MarkdownEditorBus = .default
     ) {
-        self.wikiLinks = wikiLinks
         self.images = images
         self.syntaxHighlighter = syntaxHighlighter
         self.latex = latex

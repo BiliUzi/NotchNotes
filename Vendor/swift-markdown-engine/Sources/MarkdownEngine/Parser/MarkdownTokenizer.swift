@@ -6,19 +6,13 @@
 //
 
 // Reads plain Markdown text and breaks it into recognizable parts like
-// headings, links, lists, code blocks, and LaTeX.
+// headings, lists, code blocks, and LaTeX.
 import Foundation
 
 // MARK: - Static Regexes
 private extension MarkdownTokenizer {
     static let imageEmbedRegex = try! NSRegularExpression(
         pattern: "!\\[\\[([^\\]\\r\\n]*)\\]\\]"
-    )
-    static let wikiLinkRegex = try! NSRegularExpression(
-        pattern: "\\[\\[([^\\|\\]\\r\\n]*)\\|?([^\\]\\r\\n]*)\\]\\]"
-    )
-    static let markdownLinkRegex = try! NSRegularExpression(
-        pattern: "\\[([^\\]\\r\\n]+)\\]\\(([^\\)\\r\\n]+)\\)"
     )
     static let headingRegex = try! NSRegularExpression(
         pattern: "^\\s*(#{1,6}) +(.*)$",
@@ -31,10 +25,6 @@ private extension MarkdownTokenizer {
     static let codeBlockRegex = try! NSRegularExpression(
         pattern: #"^```[ \t]*([A-Za-z0-9_+#.-]*?)[ \t]*\r?\n((?:(?!^```[^\r\n]*$)[\s\S])*?)^(```)[^\r\n]*$"#,
         options: [.anchorsMatchLines]
-    )
-    static let inlineCodeRegex = try! NSRegularExpression(
-        pattern: "`([^`\\n]+)`",
-        options: []
     )
     static let blockLatexRegex = try! NSRegularExpression(
         pattern: #"(?s)(?<!\$)\$\$(.+?)\$\$"#,
@@ -57,8 +47,7 @@ enum MarkdownTokenizer {
         // Emphasis via stack parser.
         tokens.append(contentsOf: parseEmphasisTokens(in: text))
 
-        // Image embeds ![[Name]] (must be parsed before wikiLinks)
-        var imageEmbedRanges: [NSRange] = []
+        // Image embeds ![[Name]]
         for match in imageEmbedRegex.matches(in: text, options: [], range: fullRange) {
             let full = match.range(at: 0)
             let content = match.range(at: 1)
@@ -68,37 +57,6 @@ enum MarkdownTokenizer {
                                         range: full,
                                         contentRange: content,
                                         markerRanges: [openMarker, closeMarker]))
-            imageEmbedRanges.append(full)
-        }
-
-        // Node links [[Name]]
-        for match in wikiLinkRegex.matches(in: text, options: [], range: fullRange) {
-            let full = match.range(at: 0)
-            // Skip ranges already claimed by imageEmbed tokens
-            let overlapsImage = imageEmbedRanges.contains { NSIntersectionRange($0, full).length > 0 }
-            if overlapsImage { continue }
-            let content = match.range(at: 1)
-            let open = NSRange(location: full.location, length: 2)
-            let close = NSRange(location: full.location + full.length - 2, length: 2)
-            tokens.append(MarkdownToken(kind: .wikiLink,
-                                        range: full,
-                                        contentRange: content,
-                                        markerRanges: [open, close]))
-        }
-
-        // Markdown links [Text](URL)
-        for match in markdownLinkRegex.matches(in: text, options: [], range: fullRange) {
-            let full = match.range
-            let textRange = match.range(at: 1)
-            let urlRange = match.range(at: 2)
-            let openBracket = NSRange(location: full.location, length: 1)
-            let closeBracket = NSRange(location: textRange.location + textRange.length, length: 1)
-            let openParen = NSRange(location: urlRange.location - 1, length: 1)
-            let closeParen = NSRange(location: urlRange.location + urlRange.length, length: 1)
-            tokens.append(MarkdownToken(kind: .link,
-                                        range: full,
-                                        contentRange: textRange,
-                                        markerRanges: [openBracket, closeBracket, openParen, closeParen]))
         }
 
         // Headings #... up to ######
@@ -153,18 +111,6 @@ enum MarkdownTokenizer {
                                         range: full,
                                         contentRange: content,
                                         markerRanges: [openMarker, closeMarker]))
-        }
-
-        // Inline code `code`
-        for match in inlineCodeRegex.matches(in: text, options: [], range: fullRange) {
-            let full = match.range(at: 0)
-            let content = match.range(at: 1)
-            let openBacktick = NSRange(location: full.location, length: 1)
-            let closeBacktick = NSRange(location: full.location + full.length - 1, length: 1)
-            tokens.append(MarkdownToken(kind: .inlineCode,
-                                        range: full,
-                                        contentRange: content,
-                                        markerRanges: [openBacktick, closeBacktick]))
         }
 
         // Inline LaTeX $formula$

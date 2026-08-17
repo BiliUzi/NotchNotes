@@ -33,18 +33,8 @@ public struct MarkdownEditorTheme: Sendable {
     /// Foreground color for de-emphasized text and most syntax markers.
     /// Defaults to `secondaryLabelColor` so it tracks the system style.
     public var mutedText: NSColor
-    /// Foreground color for content the engine wants to deemphasize further
-    /// than `mutedText` — for example, broken wiki-links.
-    public var disabledText: NSColor
     /// Foreground color for heading marker glyphs (`#`, `##`, …).
     public var headingMarker: NSColor
-
-    // MARK: Links
-
-    /// Foreground color for hyperlinks that resolve to an URL.
-    public var link: NSColor
-    /// Foreground color for incomplete `[text]` patterns (no URL yet).
-    public var incompleteLink: NSColor
 
     // MARK: Find / search highlights
 
@@ -68,38 +58,24 @@ public struct MarkdownEditorTheme: Sendable {
     /// Foreground color used when rendering LaTeX formulas in dark mode.
     public var latexDarkModeText: NSColor
 
-    // MARK: Strikethrough / decoration
-
-    /// Stroke color used for strikethrough decorations
-    /// (e.g. completed task list items, horizontal rules).
-    public var strikethroughColor: NSColor
-
     // MARK: Init
 
     public init(
         bodyText: NSColor = .labelColor,
         mutedText: NSColor = .secondaryLabelColor,
-        disabledText: NSColor = .tertiaryLabelColor,
         headingMarker: NSColor = .gray,
-        link: NSColor = .linkColor,
-        incompleteLink: NSColor = .systemBlue,
         findMatchHighlight: NSColor = .systemYellow,
         findCurrentMatchHighlight: NSColor = .systemYellow,
         latexLightModeText: NSColor = .black,
-        latexDarkModeText: NSColor = .white,
-        strikethroughColor: NSColor = .labelColor
+        latexDarkModeText: NSColor = .white
     ) {
         self.bodyText = bodyText
         self.mutedText = mutedText
-        self.disabledText = disabledText
         self.headingMarker = headingMarker
-        self.link = link
-        self.incompleteLink = incompleteLink
         self.findMatchHighlight = findMatchHighlight
         self.findCurrentMatchHighlight = findCurrentMatchHighlight
         self.latexLightModeText = latexLightModeText
         self.latexDarkModeText = latexDarkModeText
-        self.strikethroughColor = strikethroughColor
     }
 
     /// System-native palette built from `NSColor` dynamic system colors.

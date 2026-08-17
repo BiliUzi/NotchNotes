@@ -5,13 +5,12 @@
 //  Created by Luca Chen on 18.02.26.
 //
 
-// Applies the Markdown look (bold, links, code, headings, etc.) based on
+// Applies the Markdown look (bold, code blocks, headings, etc.) based on
 // the current text and cursor position.
 //
 // Token-class–specific styling lives in extension files:
 //   - MarkdownStyler+TextStyling.swift   (headings, emphasis)
-//   - MarkdownStyler+Links.swift         (auto / markdown / wiki links)
-//   - MarkdownStyler+Code.swift          (fenced + inline code)
+//   - MarkdownStyler+Code.swift          (fenced code blocks)
 //   - MarkdownStyler+Latex.swift         (block + inline LaTeX)
 //   - MarkdownStyler+Images.swift        (image embeds)
 //   - MarkdownStyler+TaskCheckboxes.swift
@@ -21,17 +20,6 @@ import Foundation
 // MARK: - Regexes used only by styling
 
 extension MarkdownStyler {
-    static let linkDataDetector: NSDataDetector? = try? NSDataDetector(
-        types: NSTextCheckingResult.CheckingType.link.rawValue
-    )
-    static let incompleteLinkRegexes: [NSRegularExpression] = [
-        "\\[\\]",
-        "\\[\\[\\]\\]",
-        "\\[[^\\]\\r\\n]*$",
-        "\\[[^\\]\\r\\n]+\\](?!\\()",
-        "\\[[^\\]\\r\\n]+\\]\\([^)\\r\\n]*$",
-        "\\[[^\\]\\r\\n]+\\]\\(\\)"
-    ].map { try! NSRegularExpression(pattern: $0) }
     static let taskListRegex: NSRegularExpression = try! NSRegularExpression(
         pattern: #"^([ \t]*)([-•]|\d+\.)([ \t]+)(\[[ xX]\])(?=[ \t])"#,
         options: [.anchorsMatchLines]
@@ -61,7 +49,6 @@ extension MarkdownStyler {
         let codeBackgroundColor: NSColor
         let codeParagraphStyle: NSParagraphStyle
         let hiddenMarkerFont: NSFont
-        let inlineMarkerFont: NSFont
         let latexMarkerFont: NSFont
         let configuration: MarkdownEditorConfiguration
 
@@ -82,7 +69,6 @@ enum MarkdownStyler {
         layoutBridge: LayoutBridge? = nil,
         caretLocation: Int,
         activeTokenIndices: Set<Int>,
-        wikiLinkIDProvider: (NSRange) -> String? = { _ in nil },
         precomputedTokens: [MarkdownToken]? = nil,
         scopedRanges: [NSRange]? = nil,
         configuration: MarkdownEditorConfiguration = .default
@@ -90,7 +76,7 @@ enum MarkdownStyler {
         let tokens = precomputedTokens ?? MarkdownTokenizer.parseTokens(in: text)
         let nsText = text as NSString
         let fullRange = NSRange(location: 0, length: nsText.length)
-        let codeTokens = tokens.filter { $0.kind == .codeBlock || $0.kind == .inlineCode }
+        let codeTokens = tokens.filter { $0.kind == .codeBlock }
         let baseFont = NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
         let baseDefaultLineHeight = ceil(
             layoutBridge?.defaultLineHeight(for: baseFont)
@@ -139,7 +125,6 @@ enum MarkdownStyler {
             codeBackgroundColor: codeBackgroundColor,
             codeParagraphStyle: codeParagraphStyle,
             hiddenMarkerFont: codeFont,
-            inlineMarkerFont: NSFont.systemFont(ofSize: hiddenMarkerSize),
             latexMarkerFont: NSFont(name: fontName, size: hiddenMarkerSize)
                 ?? NSFont.systemFont(ofSize: hiddenMarkerSize),
             configuration: configuration
@@ -159,16 +144,10 @@ enum MarkdownStyler {
         )
         result += styleHeadings(ctx)
         result += styleEmphasis(ctx)
-        result += styleAutoLinks(ctx)
-        result += styleWikiLinks(ctx, wikiLinkIDProvider: wikiLinkIDProvider)
         result += styleImageEmbeds(ctx)
-        result += styleMarkdownLinks(ctx)
         result += styleCodeBlocks(ctx)
-        result += styleInlineCode(ctx)
         result += styleBlockLatex(ctx)
         result += styleInlineLatex(ctx)
-        result += styleHorizontalRules(ctx)
-        result += styleIncompleteLinkBrackets(ctx)
         result += styleTaskCheckboxes(ctx)
         result += shrinkInactiveMarkers(ctx)
         return result
@@ -318,59 +297,16 @@ extension MarkdownStyler {
     }
 }
 
-// MARK: - Whole-document & inline-only styling kept inline (small helpers)
+// MARK: - Inactive marker styling
 
 extension MarkdownStyler {
-
-    // MARK: Horizontal Rules ---
-
-    static func styleHorizontalRules(_ ctx: StylingContext) -> [StyledRange] {
-        var attrs: [StyledRange] = []
-        let hrPattern = "^[ \\t]*-{3,}[ \\t]*$"
-        if let hrRegex = try? NSRegularExpression(pattern: hrPattern, options: [.anchorsMatchLines]) {
-            for hrMatch in hrRegex.matches(in: ctx.text, range: ctx.fullRange) {
-                attrs.append((hrMatch.range, [.foregroundColor: NSColor.clear]))
-                attrs.append((hrMatch.range, [
-                    .strikethroughStyle: NSUnderlineStyle.thick.rawValue,
-                    .strikethroughColor: ctx.configuration.theme.strikethroughColor
-                ]))
-                let rulePara = NSMutableParagraphStyle()
-                attrs.append((hrMatch.range, [.paragraphStyle: rulePara]))
-            }
-        }
-        return attrs
-    }
-
-    // MARK: Incomplete Link Brackets
-
-    static func styleIncompleteLinkBrackets(_ ctx: StylingContext) -> [StyledRange] {
-        var attrs: [StyledRange] = []
-        for regex in MarkdownStyler.incompleteLinkRegexes {
-            for match in regex.matches(in: ctx.text, options: [], range: ctx.fullRange) {
-                let matchRange = match.range
-                if MarkdownDetection.isInsideCodeBlock(range: matchRange, codeTokens: ctx.codeTokens) { continue }
-                let substring = ctx.nsText.substring(with: matchRange)
-                for (i, char) in substring.enumerated() {
-                    let location = matchRange.location + i
-                    if char == "[" || char == "]" || char == "(" || char == ")" {
-                        let markerRange = NSRange(location: location, length: 1)
-                        attrs.append((markerRange, [.foregroundColor: ctx.configuration.theme.mutedText]))
-                    } else {
-                        let contentRange = NSRange(location: location, length: 1)
-                        attrs.append((contentRange, [.foregroundColor: ctx.configuration.theme.incompleteLink.withAlphaComponent(ctx.configuration.link.incompleteLinkAlpha)]))
-                    }
-                }
-            }
-        }
-        return attrs
-    }
 
     // MARK: Shrink / Hide Inactive Markers
 
     static func shrinkInactiveMarkers(_ ctx: StylingContext) -> [StyledRange] {
         var attrs: [StyledRange] = []
         for (i, token) in ctx.tokens.enumerated() where !ctx.activeTokenIndices.contains(i) {
-            if token.kind == .codeBlock || token.kind == .inlineCode || token.kind == .inlineLatex || token.kind == .imageEmbed {
+            if token.kind == .codeBlock || token.kind == .inlineLatex || token.kind == .imageEmbed {
                 continue
             }
             if MarkdownDetection.isInsideCodeBlock(range: token.range, codeTokens: ctx.codeTokens) {
@@ -378,18 +314,6 @@ extension MarkdownStyler {
             }
             let smallSize = ctx.configuration.markers.hiddenMarkerFontSize
             let smallFont = NSFont(name: ctx.fontName, size: smallSize) ?? NSFont.systemFont(ofSize: smallSize)
-            if token.kind == .link && token.markerRanges.count >= 4 {
-                let openParen = token.markerRanges[2]
-                let closeParen = token.markerRanges[3]
-                let hideRange = NSRange(
-                    location: openParen.location,
-                    length: (closeParen.location + closeParen.length) - openParen.location
-                )
-                attrs.append((hideRange, [
-                    .font: smallFont,
-                    .foregroundColor: NSColor.clear
-                ]))
-            }
             for m in token.markerRanges {
                 attrs.append((m, [
                     .font: smallFont,

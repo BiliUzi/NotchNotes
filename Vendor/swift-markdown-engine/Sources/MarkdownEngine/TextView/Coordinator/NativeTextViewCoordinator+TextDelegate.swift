@@ -5,7 +5,7 @@
 //  Created by Luca Chen on 16.03.26.
 //
 //  The hot NSTextViewDelegate path: keystroke handling, selection-change
-//  reaction, link-click forwarding, and the typing-attributes shim that
+//  reaction and the typing-attributes shim that
 //  prevents AppKit from leaking heading paragraphStyle into the trailing
 //  extra-line fragment. Restyle scoping (which paragraphs to re-tokenize on
 //  each event) lives here too — it sets up the inputs that
@@ -59,16 +59,10 @@ extension NativeTextViewCoordinator {
         let safeSelRange = NSRange(location: safeLocation, length: 0)
         previousCaretLocation = safeSelRange.location
         if !wtActive {
-            let storageState = WikiLinkService.makeStorageState(
-                from: tv.string,
-                existingMetadata: self.wikiLinkMetadata,
-                textStorage: tv.textStorage
-            )
-            self.wikiLinkMetadata = storageState.metadata
-            if storageState.storage != self.lastSyncedText {
+            if tv.string != self.lastSyncedText {
                 DispatchQueue.main.async {
-                    self.lastSyncedText = storageState.storage
-                    self.text = storageState.storage
+                    self.lastSyncedText = tv.string
+                    self.text = tv.string
                 }
             }
         }
@@ -162,15 +156,6 @@ extension NativeTextViewCoordinator {
         if isWritingToolsActive { return }
         let selRange = tv.selectedRange()
         let currentEventType = NSApp.currentEvent?.type
-        // Mouse-/Wake-Fokus auf Link: kein Preview, erst Navigation. Gilt für alle Nicht-Key-Events.
-        if currentEventType != .keyDown,
-           selRange.location < (tv.string as NSString).length,
-           tv.textStorage?.attribute(.link, at: selRange.location, effectiveRange: nil) != nil {
-            isImageEmbedActive = false
-            isWikiLinkActive = false
-            onInlineSelectionChange?(nil)
-            return
-        }
         updateSelectionStates(tv)
         let selLoc = selRange.location
 
@@ -241,61 +226,6 @@ extension NativeTextViewCoordinator {
             }
         }
 
-        let nsString = tv.string as NSString
-        let selLocation = tv.selectedRange().location
-        let inlineContext = inlineTokenContext(
-            at: selLocation,
-            parsed: parsed,
-            codeTokens: codeTokens,
-            text: nsText
-        )
-        let isInsideImageEmbed = {
-            guard case .imageEmbed = inlineContext else { return false }
-            return true
-        }()
-        // Preview must only trigger inside the `![[…]]` content area
-        let isInsideImageEmbedContent: Bool = {
-            guard case .imageEmbed(let token) = inlineContext else { return false }
-            let start = token.range.location + 3
-            let end = NSMaxRange(token.range) - 2
-            return selLocation >= start && selLocation <= end
-        }()
-
-        let isTyping = currentEventType == .keyDown
-        let imageEmbedShowsInlinePreview = isInsideImageEmbedContent && isTyping
-        var inlineSelectionState: InlineSelectionState? = nil
-        if let inlineContext {
-            let openingMarkerLength = inlineContext.selectionKind == .imageEmbed ? 3 : 2
-            let displayRange = selectionDisplayRange(for: inlineContext.token, openingMarkerLength: openingMarkerLength)
-            let placeholder = nsString.substring(with: displayRange)
-            let storageRange = inlineContext.selectionKind == .wikiLink
-                ? storageRange(containingDisplayLocation: selLocation) ?? storageRange(forDisplayRange: displayRange)
-                : nil
-            let previewRect = tv.viewRect(forCharacterRange: displayRange, using: layoutBridge)
-                ?? tv.viewRect(forCharacterRange: tv.selectedRange(), using: layoutBridge)
-
-            let shouldShowInlinePreview =
-                inlineContext.selectionKind == .wikiLink
-                || (inlineContext.selectionKind == .imageEmbed && imageEmbedShowsInlinePreview)
-            if shouldShowInlinePreview, let previewRect {
-                let selection = WikiLinkSelection(
-                    displayRange: displayRange,
-                    storageRange: storageRange,
-                    placeholder: placeholder
-                )
-                inlineSelectionState = InlineSelectionState(kind: inlineContext.selectionKind, selection: selection)
-                DispatchQueue.main.async {
-                    self.onCaretRectChange?(previewRect)
-                }
-            }
-        }
-
-        DispatchQueue.main.async {
-            self.isWikiLinkActive = inlineSelectionState?.kind == .wikiLink
-            self.isImageEmbedActive = isInsideImageEmbed
-            self.onInlineSelectionChange?(inlineSelectionState)
-        }
-
         self.previousActiveTokenIndices = self.activeTokenIndices
         self.previousCaretLocation = caretLoc
 
@@ -351,18 +281,6 @@ extension NativeTextViewCoordinator {
             return handleBacktab(textView)
         }
         return false
-    }
-
-    public func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-        guard let target = WikiLinkService.resolveIdentifier(link: link, textView: textView, at: charIndex) else {
-            return false
-        }
-        // Direkt deaktivieren, bevor der Navigation-Callback läuft.
-        self.isWikiLinkActive = false
-        DispatchQueue.main.async {
-            self.onLinkClick?(target)
-        }
-        return true
     }
 
     func updateSelectionStates(_ tv: NSTextView) {

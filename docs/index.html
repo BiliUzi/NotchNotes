@@ -650,16 +650,6 @@
       line-height: 1;
     }
 
-    .format-glyph.strike {
-      text-decoration: line-through;
-      text-decoration-thickness: 1.5px;
-    }
-
-    .format-glyph.code {
-      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-      font-size: 15px;
-    }
-
     .menu-line {
       position: absolute;
       inset: 0 0 auto;
@@ -1139,14 +1129,6 @@
               <symbol id="symbol-plus" viewBox="0 0 18 18">
                 <path d="M9 3v12M3 9h12"/>
               </symbol>
-              <symbol id="symbol-link" viewBox="0 0 18 18">
-                <path d="m7.1 11.1-1.65 1.65a3 3 0 0 1-4.2-4.25L3.7 6.05a3 3 0 0 1 4.25 0"/>
-                <path d="m10.9 6.9 1.65-1.65a3 3 0 0 1 4.2 4.25l-2.45 2.45a3 3 0 0 1-4.25 0"/>
-                <path d="m6.5 11.5 5-5"/>
-              </symbol>
-              <symbol id="symbol-quote" viewBox="0 0 18 18">
-                <path fill="currentColor" stroke="none" d="M2 4.2h5.6v5.1H4.5c0 1.7-.55 2.85-1.72 3.65l-.8-1.08c.72-.55 1.08-1.24 1.12-2.57H2V4.2Zm8.4 0H16v5.1h-3.08c0 1.7-.55 2.85-1.72 3.65l-.8-1.08c.72-.55 1.08-1.24 1.12-2.57H10.4V4.2Z"/>
-              </symbol>
               <symbol id="symbol-list" viewBox="0 0 18 18">
                 <circle cx="3" cy="4.5" r=".8" fill="currentColor" stroke="none"/>
                 <circle cx="3" cy="9" r=".8" fill="currentColor" stroke="none"/>
@@ -1279,10 +1261,6 @@
                 <div class="toolbar-row">
                   <div class="md-toolbar" aria-label="Markdown shortcut toolbar">
                     <button class="tool-button" type="button" aria-label="Bold"><span class="format-glyph" aria-hidden="true">B</span></button>
-                    <button class="tool-button" type="button" aria-label="Strikethrough"><span class="format-glyph strike" aria-hidden="true">S</span></button>
-                    <button class="tool-button" type="button" aria-label="Inline code"><span class="format-glyph code" aria-hidden="true">`</span></button>
-                    <button class="tool-button" type="button" aria-label="Link"><svg class="sf-symbol" aria-hidden="true"><use href="#symbol-link"/></svg></button>
-                    <button class="tool-button" type="button" aria-label="Quote"><svg class="sf-symbol" aria-hidden="true"><use href="#symbol-quote"/></svg></button>
                     <button class="tool-button" type="button" aria-label="Bulleted list"><svg class="sf-symbol" aria-hidden="true"><use href="#symbol-list"/></svg></button>
                     <button class="tool-button" type="button" aria-label="Numbered list"><svg class="sf-symbol" aria-hidden="true"><use href="#symbol-number-list"/></svg></button>
                     <button class="tool-button" type="button" aria-label="Todo list"><svg class="sf-symbol" aria-hidden="true"><use href="#symbol-checklist"/></svg></button>

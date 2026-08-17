@@ -8,32 +8,20 @@
 // Brings the editor into SwiftUI and wires up the text view with the
 // right setup, styling, and callbacks.
 //
-// Public selection / replacement value types live in
-// `NativeTextViewSelectionTypes.swift`.
 import SwiftUI
 import AppKit
 
 /// SwiftUI bridge for MarkdownEngine's AppKit-backed editor.
 ///
 /// Wraps a TextKit 2 `NSTextView` inside an `NSScrollView` and exposes a
-/// SwiftUI-friendly API of bindings (text, link state, replacement requests)
-/// and callback closures (link clicks, caret movement, inline-selection and
-/// code-block change notifications). All visual styling and external
-/// dependencies are routed through ``MarkdownEditorConfiguration``.
+/// SwiftUI-friendly API of bindings and callback closures. All visual styling
+/// and external dependencies are routed through ``MarkdownEditorConfiguration``.
 public struct NativeTextViewWrapper: NSViewRepresentable {
     public typealias Coordinator = NativeTextViewCoordinator
     public typealias NSViewType = NSScrollView
 
-    /// Two-way binding to the document text in storage form
-    /// (`[[Name|<id>]]` for wiki-links). The engine keeps display and
-    /// storage forms in sync internally.
+    /// Two-way binding to the document text.
     @Binding public var text: String
-    /// Becomes `true` while the caret is inside a `[[Name]]` link's content
-    /// range, so embedders can show a contextual UI (e.g. a popover).
-    @Binding public var isWikiLinkActive: Bool
-    /// Push a replacement into the editor by setting this to a non-nil value;
-    /// the engine applies it on the next update and then clears the binding.
-    @Binding public var pendingInlineReplacement: InlineReplacementRequest?
     /// The full editor configuration (theme + services + style toggles). Engine
     /// embedders construct this themselves and pass it in; the wrapper does
     /// not read UserDefaults or know about app-specific colors/services.
@@ -45,8 +33,8 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
     public var fontSize: CGFloat
     /// Opaque document identifier. Changing this invalidates undo history
     /// and resets per-document editor state. Set a stable, unique value
-    /// per document when displaying multiple editors so pending
-    /// replacements and undo stay scoped to each editor.
+    /// per document when displaying multiple editors so undo stays scoped
+    /// to each editor.
     public var documentId: String
     /// When `false` the editor renders read-only with no caret.
     public var isEditable: Bool
@@ -55,47 +43,27 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
     /// to the system's default plain-text paste.
     public var onPasteImage: ((NSPasteboard) -> String?)?
 
-    /// Fires when the user clicks a `[[Name]]` link. The argument is the
-    /// resolved opaque identifier (or the display name when no resolver
-    /// was supplied).
-    public var onLinkClick: ((String) -> Void)?
-    /// Fires whenever the caret rect inside an active wiki-link changes,
-    /// so embedders can position a follow-the-caret UI.
-    public var onCaretRectChange: ((CGRect) -> Void)?
-    /// Fires when the caret enters or leaves a `[[Name]]` or `![[…]]`
-    /// token. `nil` means the caret is no longer inside such a token.
-    public var onInlineSelectionChange: ((InlineSelectionState?) -> Void)?
     /// Fires when the set of visible code blocks changes, so embedders can
     /// overlay copy buttons (see ``CodeBlockButton``).
     public var onCodeBlockSelectionChange: (([CodeBlockSelection]) -> Void)?
 
     public init(
         text: Binding<String>,
-        isWikiLinkActive: Binding<Bool> = .constant(false),
-        pendingInlineReplacement: Binding<InlineReplacementRequest?> = .constant(nil),
         configuration: MarkdownEditorConfiguration = .default,
         fontName: String = "SF Pro",
         fontSize: CGFloat = 16,
         documentId: String = "default",
         isEditable: Bool = true,
         onPasteImage: ((NSPasteboard) -> String?)? = nil,
-        onLinkClick: ((String) -> Void)? = nil,
-        onCaretRectChange: ((CGRect) -> Void)? = nil,
-        onInlineSelectionChange: ((InlineSelectionState?) -> Void)? = nil,
         onCodeBlockSelectionChange: (([CodeBlockSelection]) -> Void)? = nil
     ) {
         self._text = text
-        self._isWikiLinkActive = isWikiLinkActive
-        self._pendingInlineReplacement = pendingInlineReplacement
         self.configuration = configuration
         self.fontName = fontName
         self.fontSize = fontSize
         self.documentId = documentId
         self.isEditable = isEditable
         self.onPasteImage = onPasteImage
-        self.onLinkClick = onLinkClick
-        self.onCaretRectChange = onCaretRectChange
-        self.onInlineSelectionChange = onInlineSelectionChange
         self.onCodeBlockSelectionChange = onCodeBlockSelectionChange
     }
 
@@ -142,8 +110,7 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         textView.isEditable = isEditable
         textView.isSelectable = isEditable
         textView.isRichText = true
-        let initialState = WikiLinkService.makeDisplayState(from: text)
-        textView.string = initialState.display
+        textView.string = text
         textView.delegate = context.coordinator
         textView.isVerticallyResizable = true
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -158,7 +125,7 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = true
         textView.isGrammarCheckingEnabled = true
         textView.isAutomaticQuoteSubstitutionEnabled = true
-        textView.isAutomaticDataDetectionEnabled = true
+        textView.isAutomaticDataDetectionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.onPasteImage = onPasteImage
         if #available(macOS 15.1, *) {
@@ -179,9 +146,6 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         scrollView.reflectScrolledClipView(scrollView.contentView)
 
         context.coordinator.textView = textView
-        context.coordinator.wikiLinkMetadata = initialState.metadata
-        context.coordinator.onCaretRectChange = onCaretRectChange
-        context.coordinator.onInlineSelectionChange = onInlineSelectionChange
         context.coordinator.onCodeBlockSelectionChange = onCodeBlockSelectionChange
 
         textView.recalcOverscroll(for: scrollView)
@@ -209,7 +173,6 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
                 context.coordinator.fixWritingToolsChildWindowIfNeeded(textView: textView)
             }
             scrollView.clampToInsets()
-            context.coordinator.refreshActiveLinkCaretRect()
             context.coordinator.updateCodeBlockSelection(textView: textView)
         }
         return scrollView
@@ -263,10 +226,7 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         if textView.textContainerInset != desiredTextInset {
             textView.textContainerInset = desiredTextInset
         }
-        // Refresh services/theme when the embedder hands us a new configuration
-        // (e.g. when the available wiki-link targets change). Cheap pointer-/
-        // value-based comparison; full equality isn't required because the
-        // embedder is the source of truth.
+        // Refresh services when the embedded image source changes.
         if context.coordinator.configuration.services.images.fingerprint()
             != configuration.services.images.fingerprint() {
             context.coordinator.configuration.services = configuration.services
@@ -276,18 +236,6 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         textView.isSelectable = isEditable
         textView.insertionPointColor = isEditable ? context.coordinator.configuration.theme.bodyText : .clear
         let fontChanged = (context.coordinator.fontName != fontName) || (context.coordinator.fontSize != fontSize)
-        if let pendingInlineReplacement {
-            if pendingInlineReplacement.documentId == documentId,
-               context.coordinator.lastAppliedInlineReplacementID != pendingInlineReplacement.id {
-                context.coordinator.applyInlineReplacement(pendingInlineReplacement, to: textView)
-            }
-            DispatchQueue.main.async {
-                if self.pendingInlineReplacement?.id == pendingInlineReplacement.id {
-                    self.pendingInlineReplacement = nil
-                }
-            }
-            return
-        }
         if context.coordinator.didInitialFormatting
             && context.coordinator.lastSyncedText == text
             && !fontChanged
@@ -302,7 +250,6 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
             textView.undoManager?.removeAllActions()
             context.coordinator.didInitialFormatting = false
             context.coordinator.didEnsureLayoutForCurrentDocument = false
-            context.coordinator.resetImageEmbedState()
         }
 
         let font = NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize)
@@ -342,8 +289,6 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
             }
         }
 
-        context.coordinator.onCaretRectChange = onCaretRectChange
-        context.coordinator.onInlineSelectionChange = onInlineSelectionChange
         context.coordinator.onCodeBlockSelectionChange = onCodeBlockSelectionChange
         context.coordinator.didInitialFormatting = true
     }
@@ -352,10 +297,7 @@ public struct NativeTextViewWrapper: NSViewRepresentable {
         let coordinator = NativeTextViewCoordinator(
             text: $text,
             fontName: fontName,
-            fontSize: fontSize,
-            isWikiLinkActive: $isWikiLinkActive,
-            onLinkClick: onLinkClick,
-            onInlineSelectionChange: onInlineSelectionChange
+            fontSize: fontSize
         )
         coordinator.documentId = documentId
         coordinator.configuration = configuration

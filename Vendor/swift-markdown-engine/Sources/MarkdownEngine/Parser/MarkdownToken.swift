@@ -5,23 +5,18 @@
 //  Created by Luca Chen on 18.02.26.
 //
 
-// Defines the basic Markdown building blocks the editor works with (bold,
-// links, code, LaTeX, etc.), plus shared text attributes.
+// Defines the basic Markdown building blocks the editor works with.
 import AppKit
 import Foundation
 
 extension NSAttributedString.Key {
-    public static let wikiLinkID = NSAttributedString.Key("NodeLinkID")
     public static let taskCheckbox = NSAttributedString.Key("TaskCheckbox")
 }
 
 enum MarkdownTokenKind {
     case bold
-    case link
-    case wikiLink
     case heading
     case codeBlock
-    case inlineCode
     case blockLatex
     case inlineLatex
     case imageEmbed

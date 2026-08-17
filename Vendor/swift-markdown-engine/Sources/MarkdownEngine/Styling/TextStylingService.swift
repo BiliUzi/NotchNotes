@@ -49,7 +49,6 @@ struct TextStylingService {
         paragraphStyle: NSMutableParagraphStyle,
         caretLocation: Int,
         activeTokenIndices: Set<Int>,
-        wikiLinkIDProvider: (NSRange) -> String?,
         precomputedTokens: [MarkdownToken]? = nil,
         configuration: MarkdownEditorConfiguration = .default
     ) {
@@ -73,7 +72,6 @@ struct TextStylingService {
             layoutBridge: layoutBridge,
             caretLocation: caretLocation,
             activeTokenIndices: activeTokenIndices,
-            wikiLinkIDProvider: wikiLinkIDProvider,
             precomputedTokens: precomputedTokens,
             scopedRanges: paragraphs,
             configuration: configuration
@@ -98,7 +96,6 @@ struct TextStylingService {
                 .foregroundColor: configuration.theme.bodyText,
                 .paragraphStyle: paragraphStyle
             ], range: paragraph)
-            textView.textStorage?.removeAttribute(.link, range: paragraph)
             for (range, attrs) in styledRanges where NSIntersectionRange(range, paragraph).length > 0 {
                 let clippedRange = NSIntersectionRange(range, paragraph)
                 for (key, value) in attrs {

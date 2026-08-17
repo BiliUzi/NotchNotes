@@ -1,18 +1,16 @@
 # ``MarkdownEngine``
-# ``MarkdownEngine``
 
 A TextKit 2-backed Markdown editor view for macOS, bridged to SwiftUI.
 
 ## Overview
 
 MarkdownEngine provides a native AppKit Markdown editor with live styling,
-wiki-style ``[[Name]]`` linking, fenced code blocks with syntax highlighting,
-LaTeX rendering, embedded images, and GitHub-style task checkboxes.
+fenced code blocks with syntax highlighting, LaTeX rendering, embedded images,
+and GitHub-style task checkboxes.
 
 The engine itself has **zero external dependencies**. Everything app-specific
 is injected through small service protocols, so embedders stay in control of
-where wiki-links resolve, where embedded images live, how code is highlighted,
-and how LaTeX is rendered.
+where embedded images live, how code is highlighted, and how LaTeX is rendered.
 
 ### Quick Start
 
@@ -21,15 +19,11 @@ import SwiftUI
 import MarkdownEngine
 
 struct EditorScreen: View {
-    @State private var text: String = "# Hello, *world*"
-    @State private var isLinkActive: Bool = false
-    @State private var pendingReplacement: InlineReplacementRequest?
+    @State private var text: String = "# Hello, **world**"
 
     var body: some View {
         NativeTextViewWrapper(
             text: $text,
-            isWikiLinkActive: $isLinkActive,
-            pendingInlineReplacement: $pendingReplacement,
             configuration: .default,
             fontName: "SF Pro",
             documentId: "doc-1"
@@ -57,7 +51,6 @@ configuration.theme = theme
 
 ```swift
 let services = MarkdownEditorServices(
-    wikiLinks: MyWikiLinkResolver(),
     images:    MyImageProvider(),
     syntaxHighlighter: MySyntaxHighlighter(),
     latex:     MyLatexRenderer()
@@ -80,7 +73,6 @@ configuration.services = services
 
 ### Service Protocols
 
-- ``WikiLinkResolver``
 - ``EmbeddedImageProvider``
 - ``SyntaxHighlighter``
 - ``LatexRenderer``
@@ -92,22 +84,13 @@ configuration.services = services
 
 ### Default No-Op Implementations
 
-- ``NoOpWikiLinkResolver``
 - ``NoOpEmbeddedImageProvider``
 - ``PlainTextSyntaxHighlighter``
 - ``NoOpLatexRenderer``
 
-### Selection & Replacement
+### Code Blocks
 
-- ``InlineSelectionState``
-- ``InlineSelectionKind``
-- ``WikiLinkSelection``
-- ``InlineReplacementRequest``
 - ``CodeBlockSelection``
-
-### Wiki-Link Roundtripping
-
-- ``WikiLinkService``
 
 ### Pasteboard Helpers
 

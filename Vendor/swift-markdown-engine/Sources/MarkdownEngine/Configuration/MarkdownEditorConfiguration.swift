@@ -30,14 +30,12 @@ public struct MarkdownEditorConfiguration: Sendable {
     public var services: MarkdownEditorServices
     public var markers: MarkerStyle
     public var codeBlock: CodeBlockStyle
-    public var inlineCode: InlineCodeStyle
     public var lists: ListStyle
     public var headings: HeadingStyle
     public var imageEmbed: ImageEmbedStyle
     public var blockLatex: BlockLatexStyle
     public var inlineLatex: InlineLatexStyle
     public var checkbox: CheckboxStyle
-    public var link: LinkStyle
     public var paragraph: ParagraphStyle
     public var overscroll: OverscrollPolicy
     public var dragSelection: DragSelectionPolicy
@@ -50,14 +48,12 @@ public struct MarkdownEditorConfiguration: Sendable {
         services: MarkdownEditorServices = .default,
         markers: MarkerStyle = .default,
         codeBlock: CodeBlockStyle = .default,
-        inlineCode: InlineCodeStyle = .default,
         lists: ListStyle = .default,
         headings: HeadingStyle = .default,
         imageEmbed: ImageEmbedStyle = .default,
         blockLatex: BlockLatexStyle = .default,
         inlineLatex: InlineLatexStyle = .default,
         checkbox: CheckboxStyle = .default,
-        link: LinkStyle = .default,
         paragraph: ParagraphStyle = .default,
         overscroll: OverscrollPolicy = .default,
         dragSelection: DragSelectionPolicy = .default,
@@ -69,14 +65,12 @@ public struct MarkdownEditorConfiguration: Sendable {
         self.services = services
         self.markers = markers
         self.codeBlock = codeBlock
-        self.inlineCode = inlineCode
         self.lists = lists
         self.headings = headings
         self.imageEmbed = imageEmbed
         self.blockLatex = blockLatex
         self.inlineLatex = inlineLatex
         self.checkbox = checkbox
-        self.link = link
         self.paragraph = paragraph
         self.overscroll = overscroll
         self.dragSelection = dragSelection
@@ -146,19 +140,15 @@ public struct MarkerStyle: Sendable {
     /// Font size used for "hidden" inline markers. Effectively invisible at
     /// normal zoom while keeping displayed-range == stored-range.
     public var hiddenMarkerFontSize: CGFloat
-    /// Alpha applied to inline-code's secondary marker color.
-    public var inlineCodeMarkerAlpha: CGFloat
     /// Alpha applied to non-focused find matches when in-document search
     /// highlights are visible. The focused match is drawn at full opacity.
     public var findMatchHighlightAlpha: CGFloat
 
     public init(
         hiddenMarkerFontSize: CGFloat = 0.1,
-        inlineCodeMarkerAlpha: CGFloat = 0.5,
         findMatchHighlightAlpha: CGFloat = 0.65
     ) {
         self.hiddenMarkerFontSize = hiddenMarkerFontSize
-        self.inlineCodeMarkerAlpha = inlineCodeMarkerAlpha
         self.findMatchHighlightAlpha = findMatchHighlightAlpha
     }
 
@@ -187,20 +177,6 @@ public struct CodeBlockStyle: Sendable {
     }
 
     public static let `default` = CodeBlockStyle()
-}
-
-// MARK: - Inline code
-
-/// Styling for inline `` `code` `` spans.
-public struct InlineCodeStyle: Sendable {
-    /// Inline-code reuses the code block font size scale by default.
-    public var fontSizeScale: CGFloat
-
-    public init(fontSizeScale: CGFloat = 0.85) {
-        self.fontSizeScale = fontSizeScale
-    }
-
-    public static let `default` = InlineCodeStyle()
 }
 
 // MARK: - Lists
@@ -367,24 +343,6 @@ public struct CheckboxStyle: Sendable {
     }
 
     public static let `default` = CheckboxStyle()
-}
-
-// MARK: - Links
-
-/// Foreground alpha values applied to link content in different states.
-public struct LinkStyle: Sendable {
-    /// Foreground alpha for the visible label of an active markdown link.
-    public var activeLinkAlpha: CGFloat
-    /// Foreground alpha applied to "incomplete" link content (e.g. `[text]`
-    /// without a target).
-    public var incompleteLinkAlpha: CGFloat
-
-    public init(activeLinkAlpha: CGFloat = 0.55, incompleteLinkAlpha: CGFloat = 0.7) {
-        self.activeLinkAlpha = activeLinkAlpha
-        self.incompleteLinkAlpha = incompleteLinkAlpha
-    }
-
-    public static let `default` = LinkStyle()
 }
 
 // MARK: - Paragraphs
