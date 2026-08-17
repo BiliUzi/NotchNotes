@@ -9,7 +9,7 @@ final class NotchGeometryTests: XCTestCase {
             NotchGeometry.centerTopActivationFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080)
             ),
-            NSRect(x: 810, y: 1050, width: 300, height: 30)
+            NSRect(x: 810, y: 1079, width: 300, height: 1)
         )
     }
 
@@ -18,7 +18,7 @@ final class NotchGeometryTests: XCTestCase {
             NotchGeometry.centerTopActivationFrame(
                 screenFrame: NSRect(x: 100, y: 50, width: 1500, height: 900)
             ),
-            NSRect(x: 700, y: 920, width: 300, height: 30)
+            NSRect(x: 700, y: 949, width: 300, height: 1)
         )
     }
 

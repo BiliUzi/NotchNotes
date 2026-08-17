@@ -74,7 +74,7 @@ enum NotchGeometry {
     static func centerTopActivationFrame(
         screenFrame: NSRect
     ) -> NSRect? {
-        let activationSize = NSSize(width: 300, height: 30)
+        let activationSize = NSSize(width: 300, height: 1)
         guard screenFrame.width >= activationSize.width,
               screenFrame.height >= activationSize.height else {
             return nil
