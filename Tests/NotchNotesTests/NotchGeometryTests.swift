@@ -46,7 +46,7 @@ final class NotchGeometryTests: XCTestCase {
                 measuredNotchSize: .zero,
                 menuBarHeight: 30
             ),
-            NSSize(width: 120, height: 30)
+            NSSize(width: 300, height: 30)
         )
     }
 

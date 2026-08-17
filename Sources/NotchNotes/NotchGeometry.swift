@@ -93,7 +93,7 @@ enum NotchGeometry {
         }
 
         guard menuBarHeight > 0 else { return .zero }
-        return NSSize(width: 120, height: menuBarHeight)
+        return NSSize(width: 300, height: menuBarHeight)
     }
 
     nonisolated static func physicalNotchFrame(
