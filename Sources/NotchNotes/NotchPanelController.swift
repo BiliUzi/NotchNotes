@@ -1,18 +1,68 @@
 import AppKit
 import SwiftUI
 
+enum AppKeyboardShortcut: Equatable {
+    case newNote
+    case hideNotes
+    case quit
+    case undo
+    case redo
+    case cut
+    case copy
+    case paste
+    case selectAll
+    case showFind
+    case findNext
+    case findPrevious
+
+    init?(charactersIgnoringModifiers: String?, modifierFlags: NSEvent.ModifierFlags) {
+        let modifiers = modifierFlags.intersection([.command, .shift, .option, .control])
+        guard !modifiers.contains(.option),
+              !modifiers.contains(.control),
+              let key = charactersIgnoringModifiers?.lowercased() else {
+            return nil
+        }
+
+        switch (key, modifiers) {
+        case ("n", [.command]): self = .newNote
+        case ("w", [.command]): self = .hideNotes
+        case ("q", [.command]): self = .quit
+        case ("z", [.command]): self = .undo
+        case ("z", [.command, .shift]): self = .redo
+        case ("x", [.command]): self = .cut
+        case ("c", [.command]): self = .copy
+        case ("v", [.command]): self = .paste
+        case ("a", [.command]): self = .selectAll
+        case ("f", [.command]): self = .showFind
+        case ("g", [.command]): self = .findNext
+        case ("g", [.command, .shift]): self = .findPrevious
+        default: return nil
+        }
+    }
+}
+
 @MainActor
 final class NotchPanel: NSPanel {
     var onMouseEvent: ((NSEvent) -> Void)?
     var onEscape: (() -> Void)?
+    var onKeyboardShortcut: ((AppKeyboardShortcut) -> Bool)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .keyDown, event.keyCode == 53 {
-            onEscape?()
-            return
+        if event.type == .keyDown {
+            if event.keyCode == 53 {
+                onEscape?()
+                return
+            }
+
+            if let shortcut = AppKeyboardShortcut(
+                charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+                modifierFlags: event.modifierFlags
+            ), onKeyboardShortcut?(shortcut) == true {
+                return
+            }
         }
 
         if event.type == .leftMouseDown || event.type == .leftMouseDragged || event.type == .leftMouseUp {
@@ -205,6 +255,14 @@ final class NotchPanelController: NSObject {
         }
     }
 
+    func createNote() {
+        if let range = editorInteractionState.currentSelectionRange() {
+            store.updateSelection(for: store.activeTabID, range: range)
+        }
+        store.addTab()
+        expand(animated: true, activate: true)
+    }
+
     private func configurePanel(_ panel: NotchPanel) {
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.isOpaque = false
@@ -323,6 +381,58 @@ final class NotchPanelController: NSObject {
 
         hotPanel.onEscape = { [weak self] in self?.collapse(animated: true) }
         drawerPanel.onEscape = { [weak self] in self?.collapse(animated: true) }
+        hotPanel.onKeyboardShortcut = { [weak self] shortcut in
+            self?.handleKeyboardShortcut(shortcut) ?? false
+        }
+        drawerPanel.onKeyboardShortcut = { [weak self] shortcut in
+            self?.handleKeyboardShortcut(shortcut) ?? false
+        }
+    }
+
+    private func handleKeyboardShortcut(_ shortcut: AppKeyboardShortcut) -> Bool {
+        switch shortcut {
+        case .newNote:
+            createNote()
+            return true
+        case .hideNotes:
+            collapse(animated: true)
+            return true
+        case .quit:
+            NSApp.terminate(nil)
+            return true
+        case .undo:
+            return sendResponderAction(Selector(("undo:")))
+        case .redo:
+            return sendResponderAction(Selector(("redo:")))
+        case .cut:
+            return sendResponderAction(#selector(NSText.cut(_:)))
+        case .copy:
+            return sendResponderAction(#selector(NSText.copy(_:)))
+        case .paste:
+            return sendResponderAction(#selector(NSText.paste(_:)))
+        case .selectAll:
+            return sendResponderAction(#selector(NSText.selectAll(_:)))
+        case .showFind:
+            return sendFindAction(.showFindInterface)
+        case .findNext:
+            return sendFindAction(.nextMatch)
+        case .findPrevious:
+            return sendFindAction(.previousMatch)
+        }
+    }
+
+    private func sendResponderAction(_ action: Selector) -> Bool {
+        NSApp.sendAction(action, to: nil, from: nil)
+    }
+
+    private func sendFindAction(_ action: NSTextFinder.Action) -> Bool {
+        let sender = NSButton()
+        sender.tag = action.rawValue
+        return NSApp.sendAction(
+            #selector(NSTextView.performFindPanelAction(_:)),
+            to: nil,
+            from: sender
+        )
     }
 
     private func observeMouseMonitors() {
