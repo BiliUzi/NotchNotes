@@ -1,0 +1,524 @@
+import AppKit
+import SwiftUI
+
+@MainActor
+final class NotchPanel: NSPanel {
+    var onMouseEvent: ((NSEvent) -> Void)?
+    var onEscape: (() -> Void)?
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.keyCode == 53 {
+            onEscape?()
+            return
+        }
+
+        if event.type == .leftMouseDown || event.type == .leftMouseDragged || event.type == .leftMouseUp {
+            onMouseEvent?(event)
+        }
+
+        super.sendEvent(event)
+    }
+}
+
+@MainActor
+class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+}
+
+@MainActor
+class TransparentHitHostingView<Content: View>: FirstMouseHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard bounds.contains(point) else { return nil }
+        // SwiftUI may return nil when every rendered pixel is transparent.
+        // Keep the panel's full compact frame interactive without drawing a background.
+        return super.hitTest(point) ?? self
+    }
+}
+
+@MainActor
+final class CompactFileDropHostingView<Content: View>: TransparentHitHostingView<Content> {
+    var onFileDragTargeted: ((Bool) -> Void)?
+    var onFilesDropped: (([URL]) -> Bool)?
+
+    private var isFileDragTargeted = false
+
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard supportsFileURLs(sender.draggingPasteboard) else { return [] }
+        setFileDragTargeted(true)
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        supportsFileURLs(sender.draggingPasteboard) ? .copy : []
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        setFileDragTargeted(false)
+    }
+
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        setFileDragTargeted(false)
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        supportsFileURLs(sender.draggingPasteboard)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        defer { setFileDragTargeted(false) }
+        let urls = FileDropPasteboardReader.fileURLs(from: sender.draggingPasteboard)
+        guard !urls.isEmpty else { return false }
+        return onFilesDropped?(urls) ?? false
+    }
+
+    private func supportsFileURLs(_ pasteboard: NSPasteboard) -> Bool {
+        pasteboard.availableType(from: [.fileURL]) != nil
+    }
+
+    private func setFileDragTargeted(_ isTargeted: Bool) {
+        guard isFileDragTargeted != isTargeted else { return }
+        isFileDragTargeted = isTargeted
+        onFileDragTargeted?(isTargeted)
+    }
+}
+
+@MainActor
+final class NotchPanelController: NSObject {
+    private let store = NoteStore()
+    private let imageStore = LocalImageStore()
+    private let fileShelfStore = FileShelfStore()
+    private let workspaceState = NotebookWorkspaceState()
+    private let drawerState = DrawerState()
+    private let editorInteractionState = EditorInteractionState()
+    private let hotPanel: NotchPanel
+    private let drawerPanel: NotchPanel
+    private var hostingView: NSHostingView<NotebookView>?
+    private var hotHostingView: CompactFileDropHostingView<CompactNotchView>?
+    private var mousePollingTimer: Timer?
+    private var globalMouseDownMonitor: Any?
+    private var globalMouseDragMonitor: Any?
+    private var globalMouseUpMonitor: Any?
+    private var isExpanded = false
+    private var isRevealedForFileDrag = false
+
+    override init() {
+        hotPanel = NotchPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        drawerPanel = NotchPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+
+        super.init()
+        configurePanel(hotPanel)
+        configurePanel(drawerPanel)
+        rebuildContent()
+        startMousePolling()
+        observeScreenChanges()
+        observePanelMouseEvents()
+        observeGlobalMouseEvents()
+    }
+
+    func showDocked() {
+        let layout = currentLayout()
+        rebuildContent(layout: layout)
+        isExpanded = false
+        isRevealedForFileDrag = false
+        drawerState.isExpanded = false
+        drawerState.revealProgress = 0
+        hotPanel.setFrame(hotFrame(for: layout), display: true)
+        hotPanel.orderFrontRegardless()
+        drawerPanel.setFrame(drawerFrame(for: layout), display: true)
+        drawerPanel.orderOut(nil)
+    }
+
+    func expand(animated: Bool, activate: Bool = true) {
+        if isExpanded {
+            finishFileDragRevealIfNeeded()
+            if activate {
+                activateEditor()
+            }
+            return
+        }
+        let layout = currentLayout()
+        isExpanded = true
+        isRevealedForFileDrag = false
+        rebuildContent(layout: layout)
+        drawerPanel.setFrame(drawerFrame(for: layout), display: true)
+        if activate {
+            NSApp.activate(ignoringOtherApps: true)
+            drawerPanel.makeKeyAndOrderFront(nil)
+        } else {
+            drawerPanel.orderFrontRegardless()
+        }
+        hotPanel.orderOut(nil)
+        setDrawerExpanded(true, animated: animated)
+        guard activate else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [weak self] in
+            guard let self else { return }
+            guard self.isExpanded else { return }
+            self.activateEditor()
+        }
+    }
+
+    func collapse(animated: Bool) {
+        guard isExpanded else { return }
+        if let range = editorInteractionState.currentSelectionRange() {
+            store.updateSelection(for: store.activeTabID, range: range)
+        }
+        store.flush(waitForDisk: false)
+        isExpanded = false
+        isRevealedForFileDrag = false
+        workspaceState.isShelfDropTargeted = false
+        setDrawerExpanded(false, animated: animated)
+        let delay: TimeInterval = animated ? 0.18 : 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            guard !self.isExpanded else { return }
+            let layout = self.currentLayout()
+            self.drawerPanel.orderOut(nil)
+            self.hotPanel.setFrame(self.hotFrame(for: layout), display: true)
+            self.hotPanel.orderFrontRegardless()
+        }
+    }
+
+    func createNote() {
+        if let range = editorInteractionState.currentSelectionRange() {
+            store.updateSelection(for: store.activeTabID, range: range)
+        }
+        store.addTab()
+        expand(animated: true, activate: true)
+    }
+
+    private func configurePanel(_ panel: NotchPanel) {
+        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.isMovable = false
+        panel.isReleasedWhenClosed = false
+        panel.animationBehavior = .none
+        panel.acceptsMouseMovedEvents = true
+    }
+
+    private func rebuildContent(layout: NotchLayout? = nil) {
+        let layout = layout ?? currentLayout()
+        let hotView = CompactNotchView(layout: layout)
+        let view = NotebookView(
+            store: store,
+            imageStore: imageStore,
+            fileShelfStore: fileShelfStore,
+            workspaceState: workspaceState,
+            drawerState: drawerState,
+            editorInteractionState: editorInteractionState,
+            layout: layout
+        )
+
+        if let hotHostingView {
+            hotHostingView.rootView = hotView
+            configureCompactFileDropCallbacks(hotHostingView)
+        } else {
+            let host = CompactFileDropHostingView(rootView: hotView)
+            configureCompactFileDropCallbacks(host)
+            host.translatesAutoresizingMaskIntoConstraints = true
+            host.autoresizingMask = [.width, .height]
+            host.wantsLayer = true
+            host.layer?.masksToBounds = true
+            hotPanel.contentView = host
+            hotHostingView = host
+        }
+
+        if let hostingView {
+            hostingView.rootView = view
+            return
+        }
+
+        let host = FirstMouseHostingView(rootView: view)
+        host.translatesAutoresizingMaskIntoConstraints = false
+        host.wantsLayer = true
+        host.layer?.masksToBounds = true
+        drawerPanel.contentView = host
+        hostingView = host
+    }
+
+    private func configureCompactFileDropCallbacks(
+        _ host: CompactFileDropHostingView<CompactNotchView>
+    ) {
+        host.onFileDragTargeted = { [weak self] isTargeted in
+            self?.handleFileDragTargeted(isTargeted)
+        }
+        host.onFilesDropped = { [weak self] urls in
+            self?.receiveDroppedFiles(urls) ?? false
+        }
+    }
+
+    private func setDrawerExpanded(_ expanded: Bool, animated: Bool) {
+        guard animated else {
+            drawerState.isExpanded = expanded
+            drawerState.revealProgress = expanded ? 1 : 0
+            return
+        }
+
+        let animation: Animation = expanded
+            ? .spring(response: 0.28, dampingFraction: 0.86)
+            : .easeOut(duration: 0.16)
+
+        withAnimation(animation) {
+            drawerState.isExpanded = expanded
+            drawerState.revealProgress = expanded ? 1 : 0
+        }
+    }
+
+    private func startMousePolling() {
+        let timer = Timer(
+            timeInterval: 1.0 / 30.0,
+            target: self,
+            selector: #selector(mousePollingTick),
+            userInfo: nil,
+            repeats: true
+        )
+        RunLoop.main.add(timer, forMode: .common)
+        mousePollingTimer = timer
+    }
+
+    private func observeScreenChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    private func observePanelMouseEvents() {
+        hotPanel.onMouseEvent = { [weak self] event in
+            guard let self else { return }
+            guard event.type == .leftMouseDown else { return }
+            self.expand(animated: true, activate: true)
+        }
+
+        drawerPanel.onMouseEvent = { [weak self] event in
+            guard let self else { return }
+            if event.type == .leftMouseDown {
+                NSApp.activate(ignoringOtherApps: true)
+                self.drawerPanel.makeKeyAndOrderFront(nil)
+            } else if event.type == .leftMouseUp {
+                self.workspaceState.isDraggingShelfItem = false
+                self.resetFileDropState()
+            }
+            self.editorInteractionState.handleMouseEvent(event, searchingIn: self.hostingView)
+        }
+
+        hotPanel.onEscape = { [weak self] in self?.collapse(animated: true) }
+        drawerPanel.onEscape = { [weak self] in self?.collapse(animated: true) }
+    }
+
+    private func observeGlobalMouseEvents() {
+        globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self,
+                      !self.isExpanded,
+                      self.activationFrame().contains(NSEvent.mouseLocation) else {
+                    return
+                }
+                self.expand(animated: true, activate: true)
+            }
+        }
+
+        globalMouseDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] _ in
+            Task { @MainActor in
+                self?.editorInteractionState.noteGlobalMouseDragged()
+            }
+        }
+
+        globalMouseUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.editorInteractionState.noteGlobalMouseUp()
+                self.workspaceState.isDraggingShelfItem = false
+                self.resetFileDropState()
+                self.finishFileDragRevealIfNeeded()
+                let location = NSEvent.mouseLocation
+                if self.isExpanded, !self.isPointInExpandedStayRegion(location) {
+                    self.collapse(animated: true)
+                } else {
+                    self.handleMouseLocation(location)
+                }
+            }
+        }
+    }
+
+    @objc private func screenParametersChanged(_ notification: Notification) {
+        let layout = currentLayout()
+        rebuildContent(layout: layout)
+        hotPanel.setFrame(hotFrame(for: layout), display: true)
+        drawerPanel.setFrame(drawerFrame(for: layout), display: true)
+    }
+
+    @objc private func mousePollingTick(_ timer: Timer) {
+        handleMouseLocation(NSEvent.mouseLocation)
+    }
+
+    private func handleMouseLocation(_ point: NSPoint) {
+        if !isExpanded,
+           NSEvent.pressedMouseButtons & 1 == 1,
+           activationFrame().contains(point),
+           FileDropPasteboardReader.containsFileURLs(NSPasteboard(name: .drag)) {
+            handleFileDragTargeted(true)
+            return
+        }
+
+        if isExpanded {
+            return
+        }
+    }
+
+    private func activationFrame() -> NSRect {
+        let layout = currentLayout()
+        let frame = hotPanel.frame
+        guard frame.width > 0, frame.height > 0 else {
+            return hotFrame(for: layout)
+        }
+
+        return frame
+    }
+
+    private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {
+        let margin: CGFloat = 10
+        return drawerPanel.frame.insetBy(dx: -margin, dy: -margin).contains(point)
+            || activationFrame().contains(point)
+    }
+
+    private func receiveDroppedFiles(_ urls: [URL]) -> Bool {
+        guard fileShelfStore.acceptDrop(urls) else {
+            resetFileDropState()
+            return false
+        }
+
+        resetFileDropState()
+
+        // Do not replace the NSWindow that owns the active dragging destination
+        // until AppKit has finished the drop callback and closed its tracking loop.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if self.isExpanded {
+                self.finishFileDragRevealIfNeeded()
+            } else {
+                self.expand(animated: true, activate: false)
+            }
+        }
+        return true
+    }
+
+    private func handleFileDragTargeted(_ isTargeted: Bool) {
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.84)) {
+            workspaceState.isShelfDropTargeted = isTargeted
+        }
+
+        if isTargeted {
+            revealDrawerForFileDrag()
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.finishFileDragRevealIfNeeded()
+            }
+        }
+    }
+
+    private func resetFileDropState() {
+        workspaceState.isShelfDropTargeted = false
+    }
+
+    private func revealDrawerForFileDrag() {
+        guard !isExpanded else { return }
+
+        let layout = currentLayout()
+        isExpanded = true
+        isRevealedForFileDrag = true
+        drawerPanel.setFrame(drawerFrame(for: layout), display: true)
+        drawerPanel.orderFrontRegardless()
+        hotPanel.orderFrontRegardless()
+        setDrawerExpanded(true, animated: true)
+    }
+
+    private func finishFileDragRevealIfNeeded() {
+        guard isRevealedForFileDrag else { return }
+        isRevealedForFileDrag = false
+        hotPanel.orderOut(nil)
+        drawerPanel.orderFrontRegardless()
+    }
+
+    func flush() {
+        store.flush(waitForDisk: true)
+    }
+
+    private func activateEditor() {
+        NSApp.activate(ignoringOtherApps: true)
+        drawerPanel.makeKeyAndOrderFront(nil)
+        editorInteractionState.restoreSelection(
+            store.selectionRange(for: store.activeTabID),
+            searchingIn: hostingView
+        )
+        editorInteractionState.requestLayoutRefresh(searchingIn: hostingView)
+        editorInteractionState.requestFocus(searchingIn: hostingView)
+    }
+
+    private func currentLayout() -> NotchLayout {
+        NotchGeometry.layout(for: targetScreen())
+    }
+
+    private func targetScreen() -> NSScreen? {
+        NotchGeometry.targetScreen()
+    }
+
+    private func hotFrame(for layout: NotchLayout) -> NSRect {
+        let screen = targetScreen()
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        // The physical notch itself is not a reliable pointer target: the cursor
+        // normally stops just below its lower edge. Keep the compact visual size
+        // unchanged, but extend the transparent native dragging destination far
+        // enough below the notch for Finder to actually enter it.
+        let dropTargetSize = NSSize(
+            width: layout.compactSize.width,
+            height: layout.compactSize.height + 28
+        )
+        return frame(for: dropTargetSize, topY: screenFrame.maxY + layout.compactTopOffset, in: screenFrame)
+    }
+
+    private func drawerFrame(for layout: NotchLayout) -> NSRect {
+        let screen = targetScreen()
+        let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let topY = screenFrame.maxY + layout.expandedTopOffset
+        return frame(for: layout.expandedSize, topY: topY, in: screenFrame)
+    }
+
+    private func frame(for size: NSSize, topY: CGFloat, in screenFrame: NSRect) -> NSRect {
+        let x = screenFrame.midX - size.width / 2
+        let y = topY - size.height
+
+        return NSRect(x: x, y: y, width: size.width, height: size.height)
+    }
+}
