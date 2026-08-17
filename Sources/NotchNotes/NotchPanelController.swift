@@ -110,11 +110,12 @@ final class NotchPanelController: NSObject {
     private var hostingView: NSHostingView<NotebookView>?
     private var hotHostingView: CompactFileDropHostingView<CompactNotchView>?
     private var mousePollingTimer: Timer?
+    private var localMouseDownMonitor: Any?
+    private var globalMouseDownMonitor: Any?
     private var globalMouseDragMonitor: Any?
     private var globalMouseUpMonitor: Any?
     private var isExpanded = false
     private var isRevealedForFileDrag = false
-    private var wasPointerInsideHoverActivation = false
 
     override init() {
         hotPanel = NotchPanel(
@@ -138,7 +139,7 @@ final class NotchPanelController: NSObject {
         startMousePolling()
         observeScreenChanges()
         observePanelMouseEvents()
-        observeGlobalMouseEvents()
+        observeMouseMonitors()
     }
 
     func showDocked() {
@@ -334,7 +335,32 @@ final class NotchPanelController: NSObject {
         drawerPanel.onEscape = { [weak self] in self?.collapse(animated: true) }
     }
 
-    private func observeGlobalMouseEvents() {
+    private func observeMouseMonitors() {
+        localMouseDownMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+            let location = NSEvent.mouseLocation
+            Task { @MainActor in
+                guard let self,
+                      !self.isExpanded,
+                      self.clickActivationFrame(at: location).contains(location) else {
+                    return
+                }
+                self.expand(animated: true, activate: true)
+            }
+            return event
+        }
+
+        globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
+            let location = NSEvent.mouseLocation
+            Task { @MainActor in
+                guard let self,
+                      !self.isExpanded,
+                      self.clickActivationFrame(at: location).contains(location) else {
+                    return
+                }
+                self.expand(animated: true, activate: true)
+            }
+        }
+
         globalMouseDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] _ in
             Task { @MainActor in
                 self?.editorInteractionState.noteGlobalMouseDragged()
@@ -370,30 +396,18 @@ final class NotchPanelController: NSObject {
     }
 
     private func handleMouseLocation(_ point: NSPoint) {
-        let isInsideHoverActivation = hoverActivationFrame(at: point).contains(point)
-
         if !isExpanded,
            NSEvent.pressedMouseButtons & 1 == 1,
            dropActivationFrame().contains(point),
            FileDropPasteboardReader.containsFileURLs(NSPasteboard(name: .drag)) {
             hotPanel.ignoresMouseEvents = false
             handleFileDragTargeted(true)
-            wasPointerInsideHoverActivation = isInsideHoverActivation
             return
         }
 
-        if isExpanded {
-            wasPointerInsideHoverActivation = isInsideHoverActivation
-            return
-        }
+        if isExpanded { return }
 
         hotPanel.ignoresMouseEvents = true
-        if NSEvent.pressedMouseButtons == 0,
-           isInsideHoverActivation,
-           !wasPointerInsideHoverActivation {
-            expand(animated: true, activate: false)
-        }
-        wasPointerInsideHoverActivation = isInsideHoverActivation
     }
 
     private func dropActivationFrame() -> NSRect {
@@ -406,11 +420,11 @@ final class NotchPanelController: NSObject {
         return frame
     }
 
-    private func hoverActivationFrame(at point: NSPoint) -> NSRect {
+    private func clickActivationFrame(at point: NSPoint) -> NSRect {
         guard let screen = screenContaining(point) ?? targetScreen(), screen.frame.contains(point) else {
             return .zero
         }
-        return NotchGeometry.centerTopHoverFrame(
+        return NotchGeometry.centerTopActivationFrame(
             screenFrame: screen.frame,
             visibleFrame: screen.visibleFrame,
             menuBarHeight: NSApp.mainMenu?.menuBarHeight ?? 0
@@ -420,7 +434,7 @@ final class NotchPanelController: NSObject {
     private func isPointInExpandedStayRegion(_ point: NSPoint) -> Bool {
         let margin: CGFloat = 10
         return drawerPanel.frame.insetBy(dx: -margin, dy: -margin).contains(point)
-            || hoverActivationFrame(at: point).contains(point)
+            || clickActivationFrame(at: point).contains(point)
     }
 
     private func screenContaining(_ point: NSPoint) -> NSScreen? {

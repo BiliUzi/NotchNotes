@@ -4,9 +4,9 @@ import XCTest
 
 @MainActor
 final class NotchGeometryTests: XCTestCase {
-    func testCenterTopHoverFrameUsesScreenWidthFractionAndVisibleBounds() {
+    func testCenterTopActivationFrameUsesScreenWidthFractionAndVisibleBounds() {
         XCTAssertEqual(
-            NotchGeometry.centerTopHoverFrame(
+            NotchGeometry.centerTopActivationFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
                 visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1049),
                 menuBarHeight: 30
@@ -15,9 +15,9 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testCenterTopHoverFrameIsNilWithoutMenuBar() {
+    func testCenterTopActivationFrameIsNilWithoutMenuBar() {
         XCTAssertEqual(
-            NotchGeometry.centerTopHoverFrame(
+            NotchGeometry.centerTopActivationFrame(
                 screenFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
                 visibleFrame: NSRect(x: 0, y: 0, width: 1920, height: 1080),
                 menuBarHeight: 30
@@ -26,9 +26,9 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testCenterTopHoverFrameNeverExtendsBelowReservedTopArea() {
+    func testCenterTopActivationFrameNeverExtendsBelowReservedTopArea() {
         XCTAssertEqual(
-            NotchGeometry.centerTopHoverFrame(
+            NotchGeometry.centerTopActivationFrame(
                 screenFrame: NSRect(x: 100, y: 50, width: 1500, height: 900),
                 visibleFrame: NSRect(x: 100, y: 50, width: 1500, height: 880),
                 menuBarHeight: 30

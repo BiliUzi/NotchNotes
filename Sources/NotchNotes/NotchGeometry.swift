@@ -71,7 +71,7 @@ enum NotchGeometry {
         )
     }
 
-    static func centerTopHoverFrame(
+    static func centerTopActivationFrame(
         screenFrame: NSRect,
         visibleFrame: NSRect,
         menuBarHeight: CGFloat
