@@ -9,7 +9,7 @@
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
-  <string>io.github.oiloil.NotchNotes</string>
+  <string>io.github.biliuzi.NotchNotes</string>
   <key>CFBundleName</key>
   <string>NotchNotes</string>
   <key>CFBundlePackageType</key>

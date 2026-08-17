@@ -42,7 +42,7 @@ final class NoteStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let archiveURL: URL?
-    private let persistenceQueue = DispatchQueue(label: "io.github.oiloil.NotchNotes.persistence")
+    private let persistenceQueue = DispatchQueue(label: "io.github.biliuzi.NotchNotes.persistence")
     private var pendingSave: DispatchWorkItem?
     private var recentlyDeletedNote: DeletedNote?
 
