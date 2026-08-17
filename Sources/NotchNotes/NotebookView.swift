@@ -315,14 +315,39 @@ struct MarkdownCommandLabel: View {
         case .italic:
             Image(systemName: "italic")
         case .unorderedList:
-            Text("•")
-                .font(.system(size: 20, weight: .bold))
+            TwoRowListIcon(isOrdered: false)
         case .orderedList:
-            Text("1.")
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+            TwoRowListIcon(isOrdered: true)
         case .todoList:
             Image(systemName: "checklist")
         }
+    }
+}
+
+struct TwoRowListIcon: View {
+    let isOrdered: Bool
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ForEach(1...2, id: \.self) { row in
+                HStack(spacing: 3) {
+                    if isOrdered {
+                        Text("\(row).")
+                            .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                            .frame(width: 7, alignment: .trailing)
+                    } else {
+                        Circle()
+                            .frame(width: 3, height: 3)
+                            .frame(width: 7)
+                    }
+
+                    Capsule()
+                        .frame(width: 12, height: 1.5)
+                }
+                .frame(height: 7)
+            }
+        }
+        .frame(width: 22, height: 18)
     }
 }
 
