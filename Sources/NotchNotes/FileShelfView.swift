@@ -1,4 +1,5 @@
 import AppKit
+import QuickLookThumbnailing
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -266,11 +267,15 @@ private struct FileShelfChip: View {
     let onSelect: (NSEvent.ModifierFlags) -> Void
     let onDeleteSelected: () -> Void
     @State private var isHovering = false
+    @State private var previewImage: NSImage?
 
     var body: some View {
         draggableChip
             .task(id: item.fallbackPath) {
                 await store.refreshAvailability(item)
+                previewImage = await FileShelfThumbnailLoader.thumbnail(
+                    for: url
+                )
             }
     }
 
@@ -306,10 +311,16 @@ private struct FileShelfChip: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 3) {
                 ZStack(alignment: .bottomTrailing) {
-                    Image(nsImage: fileIcon)
+                    Image(nsImage: previewImage ?? fileIcon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 28, height: 28)
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: previewImage == nil ? 0 : 4,
+                                style: .continuous
+                            )
+                        )
                         .opacity(isAvailable ? 1 : 0.34)
 
                     if !isAvailable {
@@ -420,6 +431,26 @@ private struct FileShelfChip: View {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
             store.remove(item)
         }
+    }
+}
+
+@MainActor
+private enum FileShelfThumbnailLoader {
+    static func thumbnail(for url: URL) async -> NSImage? {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+
+        let request = QLThumbnailGenerator.Request(
+            fileAt: url,
+            size: CGSize(width: 28, height: 28),
+            scale: 2,
+            representationTypes: .all
+        )
+
+        return try? await QLThumbnailGenerator.shared
+            .generateBestRepresentation(for: request)
+            .nsImage
     }
 }
 
