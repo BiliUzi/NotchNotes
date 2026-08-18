@@ -12,20 +12,20 @@ final class AppKeyboardShortcutTests: XCTestCase {
         XCTAssertEqual(shortcut("c"), .copy)
         XCTAssertEqual(shortcut("v"), .paste)
         XCTAssertEqual(shortcut("a"), .selectAll)
-        XCTAssertEqual(shortcut("f"), .showFind)
-        XCTAssertEqual(shortcut("g"), .findNext)
     }
 
-    func testShiftedShortcuts() {
+    func testRedoShortcut() {
         XCTAssertEqual(shortcut("Z", modifiers: [.command, .shift]), .redo)
-        XCTAssertEqual(shortcut("G", modifiers: [.command, .shift]), .findPrevious)
     }
 
-    func testUnsupportedModifiersDoNotTriggerShortcuts() {
+    func testUnsupportedShortcutsDoNotTrigger() {
         XCTAssertNil(shortcut("c", modifiers: [.command, .option]))
         XCTAssertNil(shortcut("v", modifiers: [.command, .control]))
         XCTAssertNil(shortcut("n", modifiers: [.command, .shift]))
         XCTAssertNil(shortcut("n", modifiers: []))
+        XCTAssertNil(shortcut("f"))
+        XCTAssertNil(shortcut("g"))
+        XCTAssertNil(shortcut("G", modifiers: [.command, .shift]))
     }
 
     private func shortcut(

@@ -11,9 +11,6 @@ enum AppKeyboardShortcut: Equatable {
     case copy
     case paste
     case selectAll
-    case showFind
-    case findNext
-    case findPrevious
 
     init?(charactersIgnoringModifiers: String?, modifierFlags: NSEvent.ModifierFlags) {
         let modifiers = modifierFlags.intersection([.command, .shift, .option, .control])
@@ -33,9 +30,6 @@ enum AppKeyboardShortcut: Equatable {
         case ("c", [.command]): self = .copy
         case ("v", [.command]): self = .paste
         case ("a", [.command]): self = .selectAll
-        case ("f", [.command]): self = .showFind
-        case ("g", [.command]): self = .findNext
-        case ("g", [.command, .shift]): self = .findPrevious
         default: return nil
         }
     }
@@ -412,27 +406,11 @@ final class NotchPanelController: NSObject {
             return sendResponderAction(#selector(NSText.paste(_:)))
         case .selectAll:
             return sendResponderAction(#selector(NSText.selectAll(_:)))
-        case .showFind:
-            return sendFindAction(.showFindInterface)
-        case .findNext:
-            return sendFindAction(.nextMatch)
-        case .findPrevious:
-            return sendFindAction(.previousMatch)
         }
     }
 
     private func sendResponderAction(_ action: Selector) -> Bool {
         NSApp.sendAction(action, to: nil, from: nil)
-    }
-
-    private func sendFindAction(_ action: NSTextFinder.Action) -> Bool {
-        let sender = NSButton()
-        sender.tag = action.rawValue
-        return NSApp.sendAction(
-            #selector(NSTextView.performFindPanelAction(_:)),
-            to: nil,
-            from: sender
-        )
     }
 
     private func observeMouseMonitors() {
