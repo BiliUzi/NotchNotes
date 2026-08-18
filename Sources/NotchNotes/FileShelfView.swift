@@ -445,7 +445,7 @@ private enum FileShelfThumbnailLoader {
             fileAt: url,
             size: CGSize(width: 28, height: 28),
             scale: 2,
-            representationTypes: .all
+            representationTypes: .thumbnail
         )
 
         return try? await QLThumbnailGenerator.shared
