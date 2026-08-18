@@ -1,7 +1,6 @@
 import AppKit
-import QuickLookThumbnailing
+@preconcurrency import QuickLookThumbnailing
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct FileShelfView: View {
     @ObservedObject var store: FileShelfStore
@@ -311,7 +310,7 @@ private struct FileShelfChip: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 3) {
                 ZStack(alignment: .bottomTrailing) {
-                    Image(nsImage: previewImage ?? fileIcon)
+                    Image(nsImage: previewImage ?? FileShelfThumbnailLoader.fallbackImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 28, height: 28)
@@ -401,22 +400,6 @@ private struct FileShelfChip: View {
         return item.fileExtension?.uppercased() ?? "File"
     }
 
-    private var fileIcon: NSImage {
-        let contentType: UTType
-        if item.isDirectory == true {
-            contentType = .folder
-        } else if let fileExtension = item.fileExtension,
-                  let resolvedType = UTType(filenameExtension: fileExtension) {
-            contentType = resolvedType
-        } else {
-            contentType = .data
-        }
-
-        let icon = NSWorkspace.shared.icon(for: contentType)
-        icon.size = NSSize(width: 48, height: 48)
-        return icon
-    }
-
     private func open() {
         guard isAvailable else { return }
         NSWorkspace.shared.open(url)
@@ -436,6 +419,16 @@ private struct FileShelfChip: View {
 
 @MainActor
 private enum FileShelfThumbnailLoader {
+    static let fallbackImage: NSImage = {
+        guard let url = Bundle.main.url(
+            forResource: "ToolbarLogo",
+            withExtension: "png"
+        ), let image = NSImage(contentsOf: url) else {
+            return NSApp.applicationIconImage
+        }
+        return image
+    }()
+
     static func thumbnail(for url: URL) async -> NSImage? {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return nil
