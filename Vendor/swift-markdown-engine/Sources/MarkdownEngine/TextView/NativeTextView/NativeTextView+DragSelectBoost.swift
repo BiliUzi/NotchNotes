@@ -12,6 +12,9 @@ import AppKit
 
 extension NativeTextView {
     override func mouseDown(with event: NSEvent) {
+        if openLinkIfHit(event: event) {
+            return
+        }
         if let toggled = toggleTaskCheckboxIfHit(event: event), toggled {
             return
         }
@@ -29,6 +32,24 @@ extension NativeTextView {
         }
 
         super.mouseDown(with: event)
+    }
+
+    private func openLinkIfHit(event: NSEvent) -> Bool {
+        let point = convert(event.locationInWindow, from: nil)
+        let index = characterIndexForInsertion(at: point)
+        let length = (string as NSString).length
+        let candidates = [index, index - 1].filter { $0 >= 0 && $0 < length }
+
+        for location in candidates {
+            guard let value = textStorage?.attribute(.link, at: location, effectiveRange: nil),
+                  let url = value as? URL else {
+                continue
+            }
+            NSWorkspace.shared.open(url)
+            return true
+        }
+
+        return false
     }
 
     func performDragBoostTick() {

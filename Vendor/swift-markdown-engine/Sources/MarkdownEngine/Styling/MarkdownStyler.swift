@@ -144,6 +144,7 @@ enum MarkdownStyler {
         )
         result += styleHeadings(ctx)
         result += styleEmphasis(ctx)
+        result += styleLinks(ctx)
         result += styleImageEmbeds(ctx)
         result += styleCodeBlocks(ctx)
         result += styleBlockLatex(ctx)

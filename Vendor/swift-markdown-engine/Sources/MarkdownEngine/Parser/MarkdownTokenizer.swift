@@ -14,6 +14,9 @@ private extension MarkdownTokenizer {
     static let imageEmbedRegex = try! NSRegularExpression(
         pattern: "!\\[\\[([^\\]\\r\\n]*)\\]\\]"
     )
+    static let autolinkRegex = try! NSRegularExpression(
+        pattern: "<(https?://[^\\s<>]+)>"
+    )
     static let headingRegex = try! NSRegularExpression(
         pattern: "^\\s*(#{1,6}) +(.*)$",
         options: [.anchorsMatchLines]
@@ -57,6 +60,21 @@ enum MarkdownTokenizer {
                                         range: full,
                                         contentRange: content,
                                         markerRanges: [openMarker, closeMarker]))
+        }
+
+        // Autolinks <https://example.com>
+        for match in autolinkRegex.matches(in: text, options: [], range: fullRange) {
+            let full = match.range(at: 0)
+            let content = match.range(at: 1)
+            tokens.append(MarkdownToken(
+                kind: .link,
+                range: full,
+                contentRange: content,
+                markerRanges: [
+                    NSRange(location: full.location, length: 1),
+                    NSRange(location: NSMaxRange(full) - 1, length: 1)
+                ]
+            ))
         }
 
         // Headings #... up to ######

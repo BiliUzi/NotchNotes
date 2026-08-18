@@ -101,7 +101,7 @@ final class EditorInteractionState {
         case .bold:
             wrapSelection(prefix: "**", suffix: "**", placeholder: "bold", in: textView)
         case .link:
-            insertLink(in: textView)
+            activateLink(in: textView)
         case .unorderedList:
             prefixSelectedLines(with: "- ", in: textView)
         case .orderedList:
@@ -167,27 +167,60 @@ final class EditorInteractionState {
         replaceText(in: textView, range: range, with: replacement, selectionAfter: selection)
     }
 
-    private func insertLink(in textView: NSTextView) {
+    private func activateLink(in textView: NSTextView) {
         let range = safeSelectedRange(in: textView)
-        let selectedText = (textView.string as NSString).substring(with: range)
-        let linkText = selectedText.isEmpty ? "link text" : selectedText
-        let urlText = "https://example.com"
-        let replacement = "[\(linkText)](\(urlText))"
-        let selection: NSRange
+        let text = textView.string as NSString
 
-        if selectedText.isEmpty {
-            selection = NSRange(
-                location: range.location + 1,
-                length: linkText.utf16.count
+        guard let urlRange = detectedURLRange(for: range, in: text) else {
+            let placeholder = "<https://>"
+            let urlStart = range.location + 1
+            replaceText(
+                in: textView,
+                range: range,
+                with: placeholder,
+                selectionAfter: NSRange(location: urlStart, length: "https://".utf16.count)
             )
-        } else {
-            selection = NSRange(
-                location: range.location + "[\(linkText)](".utf16.count,
-                length: urlText.utf16.count
-            )
+            return
         }
 
-        replaceText(in: textView, range: range, with: replacement, selectionAfter: selection)
+        guard !isAutolink(urlRange, in: text) else { return }
+
+        let url = text.substring(with: urlRange)
+        let replacement = "<\(url)>"
+        replaceText(
+            in: textView,
+            range: urlRange,
+            with: replacement,
+            selectionAfter: NSRange(location: urlRange.location + replacement.utf16.count, length: 0)
+        )
+    }
+
+    private func detectedURLRange(for selection: NSRange, in text: NSString) -> NSRange? {
+        guard let detector = try? NSDataDetector(
+            types: NSTextCheckingResult.CheckingType.link.rawValue
+        ) else {
+            return nil
+        }
+
+        let fullRange = NSRange(location: 0, length: text.length)
+        if selection.length > 0 {
+            return detector.firstMatch(in: text as String, range: selection)?.range
+        }
+
+        let caret = min(selection.location, text.length)
+        return detector.matches(in: text as String, range: fullRange).first { match in
+            NSLocationInRange(caret, match.range) || caret == NSMaxRange(match.range)
+        }?.range
+    }
+
+    private func isAutolink(_ range: NSRange, in text: NSString) -> Bool {
+        guard range.location > 0, NSMaxRange(range) < text.length else {
+            return false
+        }
+
+        let opening = text.substring(with: NSRange(location: range.location - 1, length: 1))
+        let closing = text.substring(with: NSRange(location: NSMaxRange(range), length: 1))
+        return opening == "<" && closing == ">"
     }
 
     private func prefixSelectedLines(with prefix: String, in textView: NSTextView) {

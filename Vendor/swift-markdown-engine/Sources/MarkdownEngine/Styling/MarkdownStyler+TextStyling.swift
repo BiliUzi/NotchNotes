@@ -64,4 +64,32 @@ extension MarkdownStyler {
             ?? NSFontManager.shared.convert(ctx.baseFont, toHaveTrait: .boldFontMask)
     }
 
+    // MARK: Links
+
+    static func styleLinks(_ ctx: StylingContext) -> [StyledRange] {
+        var attrs: [StyledRange] = []
+
+        for (index, token) in ctx.tokens.enumerated() where token.kind == .link {
+            guard !MarkdownDetection.isInsideCodeBlock(range: token.range, codeTokens: ctx.codeTokens),
+                  let url = URL(string: ctx.nsText.substring(with: token.contentRange)) else {
+                continue
+            }
+
+            attrs.append((token.contentRange, [
+                .link: url,
+                .foregroundColor: NSColor.systemBlue,
+                .underlineStyle: NSUnderlineStyle.single.rawValue
+            ]))
+
+            let markerColor = ctx.activeTokenIndices.contains(index)
+                ? ctx.configuration.theme.mutedText
+                : NSColor.clear
+            for markerRange in token.markerRanges {
+                attrs.append((markerRange, [.foregroundColor: markerColor]))
+            }
+        }
+
+        return attrs
+    }
+
 }
