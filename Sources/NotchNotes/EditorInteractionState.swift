@@ -3,6 +3,7 @@ import SwiftUI
 
 enum MarkdownCommand: String, CaseIterable, Identifiable {
     case bold
+    case link
     case unorderedList
     case orderedList
     case todoList
@@ -14,6 +15,7 @@ enum MarkdownCommand: String, CaseIterable, Identifiable {
     var help: String {
         switch self {
         case .bold: return "Bold"
+        case .link: return "Insert link"
         case .unorderedList: return "Bulleted list"
         case .orderedList: return "Numbered list"
         case .todoList: return "Todo list"
@@ -98,6 +100,8 @@ final class EditorInteractionState {
         switch command {
         case .bold:
             wrapSelection(prefix: "**", suffix: "**", placeholder: "bold", in: textView)
+        case .link:
+            insertLink(in: textView)
         case .unorderedList:
             prefixSelectedLines(with: "- ", in: textView)
         case .orderedList:
@@ -160,6 +164,29 @@ final class EditorInteractionState {
         let content = selectedText.isEmpty ? placeholder : selectedText
         let replacement = prefix + content + suffix
         let selection = NSRange(location: range.location + prefix.utf16.count, length: content.utf16.count)
+        replaceText(in: textView, range: range, with: replacement, selectionAfter: selection)
+    }
+
+    private func insertLink(in textView: NSTextView) {
+        let range = safeSelectedRange(in: textView)
+        let selectedText = (textView.string as NSString).substring(with: range)
+        let linkText = selectedText.isEmpty ? "link text" : selectedText
+        let urlText = "https://example.com"
+        let replacement = "[\(linkText)](\(urlText))"
+        let selection: NSRange
+
+        if selectedText.isEmpty {
+            selection = NSRange(
+                location: range.location + 1,
+                length: linkText.utf16.count
+            )
+        } else {
+            selection = NSRange(
+                location: range.location + "[\(linkText)](".utf16.count,
+                length: urlText.utf16.count
+            )
+        }
+
         replaceText(in: textView, range: range, with: replacement, selectionAfter: selection)
     }
 

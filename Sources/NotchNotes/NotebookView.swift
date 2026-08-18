@@ -283,7 +283,7 @@ struct MarkdownShortcutToolbar: View {
     let editorInteractionState: EditorInteractionState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
+        HStack(alignment: .center, spacing: 10) {
             ForEach(MarkdownCommand.allCases) { command in
                 Button {
                     editorInteractionState.applyMarkdownCommand(command)
@@ -313,6 +313,10 @@ struct MarkdownCommandLabel: View {
             switch command {
             case .bold:
                 Image(systemName: "bold")
+                    .resizable()
+                    .scaledToFit()
+            case .link:
+                Image(systemName: "link")
                     .resizable()
                     .scaledToFit()
             case .unorderedList:
