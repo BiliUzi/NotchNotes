@@ -1,4 +1,4 @@
-Remaked from oil-oil
+Remaked from oil-oil for macOS
 
 https://github.com/oil-oil/NotchNotes
 
